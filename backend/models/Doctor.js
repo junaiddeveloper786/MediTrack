@@ -1,12 +1,14 @@
 const mongoose = require("mongoose");
 
-const doctorSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  specialty: String,
-  phone: String,
-  availableSlots: [String], // Array of ISO Date-Time strings
-  createdAt: { type: Date, default: Date.now },
-});
+const doctorSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, unique: true, required: true },
+    phone: { type: String, required: true },
+    specialty: { type: String, required: true },
+    availableSlots: [Date], // Array of available date-times
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("Doctor", doctorSchema);
