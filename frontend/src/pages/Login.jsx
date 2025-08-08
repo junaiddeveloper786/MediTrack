@@ -30,7 +30,7 @@ function Login() {
       if (userRole === "admin") {
         navigate("/admin/dashboard");
       } else {
-        navigate("/appointments/my");
+        navigate("/patient/dashboard");
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Login failed");
