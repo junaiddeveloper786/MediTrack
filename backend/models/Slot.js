@@ -19,4 +19,5 @@ const slotSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Slot", slotSchema);
+// ✅ Prevent OverwriteModelError
+module.exports = mongoose.models.Slot || mongoose.model("Slot", slotSchema);

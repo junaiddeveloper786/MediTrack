@@ -1,17 +1,21 @@
+// routes/slotRoutes.js
 const express = require("express");
 const router = express.Router();
 const slotController = require("../controllers/slotController");
 
-// create slots in range
+// ✅ Get available slots by doctor & date
+router.get("/available", slotController.getAvailableSlotsByDate);
+
+// ✅ Create slot
 router.post("/", slotController.createSlotsInRange);
 
-// get slots (optionally filter by doctorId, fromDate, toDate)
+// ✅ Get all slots (optional filters)
 router.get("/", slotController.getSlots);
 
-// update slot
+// ✅ Update slot
 router.put("/:id", slotController.updateSlot);
 
-// delete slot
+// ✅ Delete slot
 router.delete("/:id", slotController.deleteSlot);
 
 module.exports = router;

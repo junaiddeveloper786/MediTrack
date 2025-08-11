@@ -1,126 +1,140 @@
-// src/pages/Patient/PatientDashboard.jsx
-import { useEffect, useState } from "react";
-import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
-  LayoutDashboard,
-  CalendarDays,
-  User,
-  LogOut,
-  ClipboardList,
-} from "lucide-react";
+  FaCalendarCheck,
+  FaClipboardList,
+  FaSignOutAlt,
+  FaUserMd,
+} from "react-icons/fa";
+import PatientSidebar from "../../components/PatientSidebar"; // Adjust path as needed
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
 
-export default function PatientDashboard() {
-  const [date, setDate] = useState(new Date());
-  const [stats, setStats] = useState({
-    upcoming: 0,
-    completed: 0,
-    cancelled: 0,
-    doctors: 0,
-  });
+function PatientDashboard() {
+  const [stats, setStats] = useState({});
   const [recentAppointments, setRecentAppointments] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
-    fetch("/api/patient/stats")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setStats(data.stats);
-      })
-      .catch((err) => console.error("Stats fetch error:", err));
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
 
-    fetch("/api/patient/appointments/recent")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setRecentAppointments(data.appointments);
-      })
-      .catch((err) => console.error("Recent appointments fetch error:", err));
+    const loadData = async () => {
+      try {
+        const statsRes = await axios.get(
+          "http://localhost:5000/api/patient/stats",
+          { headers }
+        );
+        const recentRes = await axios.get(
+          "http://localhost:5000/api/patient/appointments/recent",
+          { headers }
+        );
+        setStats(statsRes.data);
+        setRecentAppointments(recentRes.data);
+      } catch (err) {
+        console.error("Error loading patient dashboard data:", err);
+      }
+    };
+
+    loadData();
   }, []);
 
-  return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-lg">
-        <div className="p-4 text-xl font-bold text-blue-600">
-          MediTrack - Patient
+  function KPI({ icon, label, value, color }) {
+    return (
+      <div
+        className={`p-5 rounded-xl text-white shadow-sm flex items-center justify-between ${color}`}
+      >
+        <div className="text-3xl">{icon}</div>
+        <div className="text-right">
+          <div className="text-sm opacity-90">{label}</div>
+          <div className="text-2xl font-bold">{value}</div>
         </div>
-        <nav className="mt-6 space-y-1">
-          <SidebarLink icon={<LayoutDashboard size={20} />} label="Dashboard" />
-          <SidebarLink
-            icon={<ClipboardList size={20} />}
-            label="My Appointments"
-          />
-          <SidebarLink
-            icon={<CalendarDays size={20} />}
-            label="Book Appointment"
-          />
-          <SidebarLink icon={<User size={20} />} label="Profile" />
-          <SidebarLink icon={<LogOut size={20} />} label="Logout" />
-        </nav>
-      </aside>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen font-sans bg-gray-50">
+      {/* Sidebar */}
+      <PatientSidebar />
 
       {/* Main Content */}
-      <main className="flex-1 p-6">
-        {/* Top bar */}
+      <main className="flex-1 p-8">
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
+          <h1 className="text-2xl font-semibold text-gray-800">
             Patient Dashboard
           </h1>
-          <div className="flex items-center space-x-3">
-            <span className="text-gray-700 font-medium">Hello, John Doe</span>
-            <img
-              src="https://ui-avatars.com/api/?name=John+Doe"
-              alt="Profile"
-              className="w-10 h-10 rounded-full"
-            />
-          </div>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <KpiCard title="Upcoming" value={stats.upcoming} color="blue" />
-          <KpiCard title="Completed" value={stats.completed} color="green" />
-          <KpiCard title="Cancelled" value={stats.cancelled} color="red" />
-          <KpiCard title="Doctors" value={stats.doctors} color="purple" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <KPI
+            color="bg-blue-500"
+            icon={<FaCalendarCheck />}
+            label="Upcoming"
+            value={stats.upcoming || 0}
+          />
+          <KPI
+            color="bg-green-500"
+            icon={<FaClipboardList />}
+            label="Completed"
+            value={stats.completed || 0}
+          />
+          <KPI
+            color="bg-red-500"
+            icon={<FaSignOutAlt />}
+            label="Cancelled"
+            value={stats.cancelled || 0}
+          />
+          <KPI
+            color="bg-purple-500"
+            icon={<FaUserMd />}
+            label="Doctors Visited"
+            value={stats.doctors || 0}
+          />
         </div>
 
-        {/* Calendar + Recent Appointments */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Calendar & Recent Appointments */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Calendar */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Calendar</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Calendar mode="single" selected={date} onSelect={setDate} />
-            </CardContent>
-          </Card>
+          <div className="bg-white shadow-sm rounded-xl p-5 border border-gray-100">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+              Your Calendar
+            </h3>
+            <Calendar
+              className="w-full border-none rounded-lg shadow-sm p-3 bg-gray-50"
+              onChange={setSelectedDate}
+              value={selectedDate}
+            />
+          </div>
 
           {/* Recent Appointments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Appointments</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="bg-white shadow-sm rounded-xl p-5 border border-gray-100">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+              Recent Appointments
+            </h3>
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left border-b">
-                    <th className="py-2">Doctor</th>
-                    <th className="py-2">Date</th>
-                    <th className="py-2">Status</th>
+                  <tr className="text-gray-600 border-b">
+                    <th className="py-2 text-left">Doctor</th>
+                    <th className="text-left">Date</th>
+                    <th className="text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentAppointments.length > 0 ? (
-                    recentAppointments.map((appt) => (
-                      <tr key={appt._id} className="border-b">
+                    recentAppointments.map((appt, i) => (
+                      <tr
+                        key={i}
+                        className="border-b hover:bg-gray-50 transition"
+                      >
                         <td className="py-2">{appt.doctorName}</td>
-                        <td className="py-2">
-                          {new Date(appt.date).toLocaleDateString()}
-                        </td>
-                        <td className="py-2">
+                        <td>{new Date(appt.date).toLocaleDateString()}</td>
+                        <td>
                           <span
-                            className={`px-2 py-1 rounded text-white text-xs ${
+                            className={`px-2 py-1 rounded-full text-white text-xs ${
                               appt.status === "Completed"
                                 ? "bg-green-500"
                                 : appt.status === "Upcoming"
@@ -145,41 +159,12 @@ export default function PatientDashboard() {
                   )}
                 </tbody>
               </table>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </main>
     </div>
   );
 }
 
-function SidebarLink({ icon, label }) {
-  return (
-    <a
-      href="#"
-      className="flex items-center px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition"
-    >
-      {icon}
-      <span className="ml-3">{label}</span>
-    </a>
-  );
-}
-
-function KpiCard({ title, value, color }) {
-  const colors = {
-    blue: "bg-blue-100 text-blue-800",
-    green: "bg-green-100 text-green-800",
-    red: "bg-red-100 text-red-800",
-    purple: "bg-purple-100 text-purple-800",
-  };
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-start p-4">
-        <span className="text-sm text-gray-500">{title}</span>
-        <span className={`mt-2 text-2xl font-bold ${colors[color]}`}>
-          {value}
-        </span>
-      </CardContent>
-    </Card>
-  );
-}
+export default PatientDashboard;

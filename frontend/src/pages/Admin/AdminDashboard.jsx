@@ -1,21 +1,10 @@
-import { useEffect, useState } from "react";
+// src/pages/Admin/AdminDashboard.jsx
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import {
-  FaUserMd,
-  FaUsers,
-  FaCalendarAlt,
-  FaChartLine,
-  FaHospitalSymbol,
-  FaBuilding,
-  FaCalendarCheck,
-  FaUserCircle,
-} from "react-icons/fa";
-import { IoLogOutOutline } from "react-icons/io5";
-import { MdDashboard, MdOutlineDashboardCustomize } from "react-icons/md";
-import { HiOutlineDocumentReport } from "react-icons/hi";
-import { Menu } from "@headlessui/react";
+import { FaUserMd, FaUsers, FaCalendarAlt, FaChartLine } from "react-icons/fa";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import AdminSidebar from "../../components/AdminSidebar";
 
 function AdminDashboard() {
   const [stats, setStats] = useState({});
@@ -26,71 +15,28 @@ function AdminDashboard() {
     const headers = { Authorization: `Bearer ${token}` };
 
     const load = async () => {
-      const statsRes = await axios.get(
-        "http://localhost:5000/api/admin/stats",
-        { headers }
-      );
-      const recentRes = await axios.get(
-        "http://localhost:5000/api/appointments/recent",
-        { headers }
-      );
-      setStats(statsRes.data);
-      setRecentAppointments(recentRes.data);
+      try {
+        const statsRes = await axios.get(
+          "http://localhost:5000/api/admin/stats",
+          { headers }
+        );
+        const recentRes = await axios.get(
+          "http://localhost:5000/api/appointments/recent",
+          { headers }
+        );
+        setStats(statsRes.data);
+        setRecentAppointments(recentRes.data);
+      } catch (err) {
+        console.error("Failed to load admin dashboard data", err);
+      }
     };
     load();
   }, []);
 
-  function SidebarItem({ icon, label }) {
-    return (
-      <div className="flex items-center gap-3 py-3 px-5 text-white hover:bg-[#1a2d58] rounded-lg cursor-pointer transition-all">
-        <span className="text-blue-400">{icon}</span>
-        <span className="text-sm">{label}</span>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen font-sans bg-[#f3f6fc]">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#0e1e40] text-white flex flex-col">
-        <div className="flex items-center px-6 py-5 text-xl font-bold">
-          <FaHospitalSymbol className="mr-2 text-blue-400" size={20} />
-          MediTrack
-        </div>
-
-        <nav className="flex-1 px-3 space-y-1">
-          <SidebarItem
-            icon={<MdDashboard size={18} />}
-            label="Admin Dashboard"
-          />
-          <SidebarItem icon={<FaBuilding size={18} />} label="Departments" />
-          <SidebarItem
-            icon={<HiOutlineDocumentReport size={18} />}
-            label="Reports"
-          />
-          <SidebarItem
-            icon={<FaCalendarCheck size={18} />}
-            label="Appointments"
-          />
-          <SidebarItem
-            icon={<MdOutlineDashboardCustomize size={18} />}
-            label="Layout"
-          />
-        </nav>
-
-        <div className="mt-auto px-4 pb-4">
-          <div
-            className="flex items-center gap-3 py-2 px-3 rounded hover:bg-[#1b2d5a] cursor-pointer"
-            onClick={() => {
-              localStorage.removeItem("token");
-              window.location.href = "/";
-            }}
-          >
-            <IoLogOutOutline size={20} className="text-blue-400" />
-            <span className="text-sm">Logout</span>
-          </div>
-        </div>
-      </aside>
+      <AdminSidebar />
 
       {/* Main Content */}
       <main className="flex-1 p-8">
@@ -99,52 +45,6 @@ function AdminDashboard() {
           <h1 className="text-2xl font-semibold text-gray-800">
             Admin Dashboard
           </h1>
-
-          {/* Profile dropdown */}
-          <Menu as="div" className="relative">
-            <Menu.Button className="flex items-center space-x-2 focus:outline-none">
-              <FaUserCircle size={28} className="text-gray-700" />
-            </Menu.Button>
-            <Menu.Items className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow-md z-50">
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    className={`${
-                      active ? "bg-gray-100" : ""
-                    } w-full text-left px-4 py-2 text-sm text-gray-700`}
-                  >
-                    Profile
-                  </button>
-                )}
-              </Menu.Item>
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    className={`${
-                      active ? "bg-gray-100" : ""
-                    } w-full text-left px-4 py-2 text-sm text-gray-700`}
-                  >
-                    Settings
-                  </button>
-                )}
-              </Menu.Item>
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    onClick={() => {
-                      localStorage.removeItem("token");
-                      window.location.href = "/";
-                    }}
-                    className={`${
-                      active ? "bg-gray-100" : ""
-                    } w-full text-left px-4 py-2 text-sm text-red-600`}
-                  >
-                    Logout
-                  </button>
-                )}
-              </Menu.Item>
-            </Menu.Items>
-          </Menu>
         </div>
 
         {/* KPI Cards */}
@@ -209,6 +109,13 @@ function AdminDashboard() {
                     </td>
                   </tr>
                 ))}
+                {recentAppointments.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="py-4 text-center text-gray-500">
+                      No recent appointments found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -1,3 +1,4 @@
+// models/Appointment.js
 const mongoose = require("mongoose");
 
 const appointmentSchema = new mongoose.Schema(
@@ -15,16 +16,17 @@ const appointmentSchema = new mongoose.Schema(
     slotId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Slot",
+      required: true,
     },
-    date: { type: Date, required: true }, // appointment date (ISO)
-    startTime: { type: String, required: true }, // "09:00"
-    endTime: { type: String, required: true }, // "10:00"
+    date: { type: Date, required: true },
+    startTime: String,
+    endTime: String,
+    reason: String,
     status: {
       type: String,
-      enum: ["Pending", "Confirmed", "Cancelled", "Rescheduled"],
+      enum: ["Pending", "Confirmed", "Cancelled"],
       default: "Pending",
     },
-    reason: { type: String }, // optional note
   },
   { timestamps: true }
 );

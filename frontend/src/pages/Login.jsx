@@ -21,6 +21,9 @@ function Login() {
       // Save token
       localStorage.setItem("token", res.data.token);
 
+      // Save user info
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
       // Get user role
       const userRole = res.data.user?.role;
 
