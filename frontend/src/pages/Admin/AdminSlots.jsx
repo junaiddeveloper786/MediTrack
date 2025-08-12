@@ -9,6 +9,7 @@ import AdminSidebar from "../../components/AdminSidebar";
 export default function AdminSlots() {
   const [doctors, setDoctors] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [editingSlotId, setEditingSlotId] = useState(null);
 
   // form fields
   const [doctorId, setDoctorId] = useState("");
@@ -16,6 +17,11 @@ export default function AdminSlots() {
   const [toDate, setToDate] = useState(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [slotDuration, setSlotDuration] = useState(15);
+
+  // edit slot
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editEndTime, setEditEndTime] = useState("");
 
   // filter fields
   const [filterDoctor, setFilterDoctor] = useState("");
@@ -65,7 +71,14 @@ export default function AdminSlots() {
   // create slots in range
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!doctorId || !fromDate || !toDate || !startTime || !endTime) {
+    if (
+      !doctorId ||
+      !fromDate ||
+      !toDate ||
+      !startTime ||
+      !endTime ||
+      !slotDuration
+    ) {
       return toast.error("All fields are required");
     }
     try {
@@ -75,7 +88,10 @@ export default function AdminSlots() {
         endDate: toDate.toISOString(),
         startTime,
         endTime,
+        slotDuration,
       };
+      console.log("Sending body:", body); // Debug log
+
       const res = await axios.post("http://localhost:5000/api/slots", body);
       if (res.data.success) {
         toast.success("Slots created");
@@ -90,15 +106,17 @@ export default function AdminSlots() {
         setToDate(null);
         setStartTime("");
         setEndTime("");
+        setSlotDuration(15);
       } else {
         toast.info(res.data.message || "No slots created");
       }
     } catch (err) {
-      console.error("create error:", err);
+      console.error("create error:", err.response?.data || err.message);
       toast.error(err.response?.data?.message || "Failed to create slots");
     }
   };
 
+  // delete slot
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this slot?")) return;
     try {
@@ -112,6 +130,35 @@ export default function AdminSlots() {
     } catch (err) {
       console.error("delete error:", err);
       toast.error("Failed to delete");
+    }
+  };
+
+  // update slot
+  const handleUpdate = async (id) => {
+    if (!editStartTime || !editEndTime) {
+      toast.error("Start time and End time are required");
+      return;
+    }
+
+    try {
+      const res = await axios.put(`http://localhost:5000/api/slots/${id}`, {
+        startTime: editStartTime,
+        endTime: editEndTime,
+      });
+      if (res.data.success) {
+        toast.success("Slot updated successfully");
+        setEditingSlotId(null);
+        fetchSlots({
+          doctorId: filterDoctor || undefined,
+          fromDate: filterFrom,
+          toDate: filterTo,
+        });
+      } else {
+        toast.error(res.data.message || "Failed to update slot");
+      }
+    } catch (err) {
+      console.error("update error:", err);
+      toast.error(err.response?.data?.message || "Failed to update slot");
     }
   };
 
@@ -147,14 +194,14 @@ export default function AdminSlots() {
         {/* Create Form */}
         <form
           onSubmit={handleCreate}
-          className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mb-6 bg-white p-4 rounded shadow"
+          className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-6 bg-white p-6 rounded shadow"
         >
-          <div className="md:col-span-2">
-            <label className="text-sm block mb-1">Doctor</label>
+          <div className="md:col-span-1">
+            <label className="text-sm font-medium mb-1 block">Doctor</label>
             <select
               value={doctorId}
               onChange={(e) => setDoctorId(e.target.value)}
-              className="w-full border p-2 rounded"
+              className="w-full border border-gray-300 p-2 rounded"
             >
               <option value="">Select doctor</option>
               {doctors.map((d) => (
@@ -165,20 +212,20 @@ export default function AdminSlots() {
             </select>
           </div>
 
-          <div>
-            <label className="text-sm block mb-1">From Date</label>
+          <div className="md:col-span-1">
+            <label className="text-sm font-medium mb-1 block">From Date</label>
             <DatePicker
               selected={fromDate}
               onChange={(d) => setFromDate(d)}
               selectsStart
               startDate={fromDate}
               endDate={toDate}
-              className="border p-2 rounded"
+              className="w-full border border-gray-300 p-2 rounded"
             />
           </div>
 
-          <div>
-            <label className="text-sm block mb-1">To Date</label>
+          <div className="md:col-span-1">
+            <label className="text-sm font-medium mb-1 block">To Date</label>
             <DatePicker
               selected={toDate}
               onChange={(d) => setToDate(d)}
@@ -186,34 +233,48 @@ export default function AdminSlots() {
               startDate={fromDate}
               endDate={toDate}
               minDate={fromDate}
-              className="border p-2 rounded"
+              className="w-full border border-gray-300 p-2 rounded"
             />
           </div>
 
-          <div>
-            <label className="text-sm block mb-1">Start Time</label>
+          <div className="md:col-span-1">
+            <label className="text-sm font-medium mb-1 block">Start Time</label>
             <input
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="border p-2 rounded w-full"
+              className="w-full border border-gray-300 p-2 rounded"
             />
           </div>
 
-          <div>
-            <label className="text-sm block mb-1">End Time</label>
+          <div className="md:col-span-1">
+            <label className="text-sm font-medium mb-1 block">End Time</label>
             <input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="border p-2 rounded w-full"
+              className="w-full border border-gray-300 p-2 rounded"
             />
           </div>
 
-          <div className="md:col-span-6 flex gap-2">
+          <div className="md:col-span-1">
+            <label className="text-sm font-medium mb-1 block">
+              Slot Duration (minutes)
+            </label>
+            <input
+              type="number"
+              min={5}
+              max={180}
+              value={slotDuration}
+              onChange={(e) => setSlotDuration(Number(e.target.value))}
+              className="w-full border border-gray-300 p-2 rounded"
+            />
+          </div>
+
+          <div className="md:col-span-6 flex gap-3 mt-4">
             <button
               type="submit"
-              className="bg-blue-600 text-white px-4 py-2 rounded"
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
             >
               Create Slots
             </button>
@@ -225,8 +286,9 @@ export default function AdminSlots() {
                 setToDate(null);
                 setStartTime("");
                 setEndTime("");
+                setSlotDuration(30);
               }}
-              className="bg-gray-200 px-4 py-2 rounded"
+              className="bg-gray-300 px-6 py-2 rounded hover:bg-gray-400 transition"
             >
               Reset
             </button>
@@ -307,7 +369,7 @@ export default function AdminSlots() {
             <tbody>
               {currentSlots.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="p-4 text-center text-gray-500">
+                  <td colSpan="6" className="p-4 text-center text-gray-500">
                     No slots found
                   </td>
                 </tr>
@@ -319,23 +381,110 @@ export default function AdminSlots() {
                     <td className="p-2">
                       {new Date(slot.date).toLocaleDateString()}
                     </td>
+
                     <td className="p-2">
-                      {slot.startTime} - {slot.endTime}
+                      {editingSlotId === slot._id ? (
+                        <>
+                          <input
+                            type="time"
+                            value={editStartTime}
+                            onChange={(e) => setEditStartTime(e.target.value)}
+                            className="border p-1 rounded mr-2"
+                          />
+                          <input
+                            type="time"
+                            value={editEndTime}
+                            onChange={(e) => setEditEndTime(e.target.value)}
+                            className="border p-1 rounded"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          {(() => {
+                            try {
+                              const startDateTime = new Date(slot.startTime);
+                              const endDateTime = new Date(slot.endTime);
+
+                              if (
+                                isNaN(startDateTime.getTime()) ||
+                                isNaN(endDateTime.getTime())
+                              ) {
+                                return "Invalid Time";
+                              }
+
+                              return (
+                                <>
+                                  {startDateTime.toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  })}{" "}
+                                  -{" "}
+                                  {endDateTime.toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  })}
+                                </>
+                              );
+                            } catch {
+                              return "Invalid Time";
+                            }
+                          })()}
+                        </>
+                      )}
                     </td>
-                    <td className="p-2">
-                      <button
-                        onClick={() => handleDelete(slot._id)}
-                        className="bg-red-500 text-white px-2 py-1 rounded"
-                      >
-                        Delete
-                      </button>
+
+                    <td className="p-2 flex gap-2">
+                      {editingSlotId === slot._id ? (
+                        <>
+                          <button
+                            onClick={() => handleUpdate(slot._id)}
+                            className="bg-green-600 text-white px-2 py-1 rounded"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingSlotId(null)}
+                            className="bg-gray-400 text-white px-2 py-1 rounded"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingSlotId(slot._id);
+                              setEditStartTime(
+                                new Date(slot.startTime)
+                                  .toISOString()
+                                  .slice(11, 16)
+                              );
+                              setEditEndTime(
+                                new Date(slot.endTime)
+                                  .toISOString()
+                                  .slice(11, 16)
+                              );
+                            }}
+                            className="bg-blue-500 text-white px-2 py-1 rounded"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(slot._id)}
+                            className="bg-red-500 text-white px-2 py-1 rounded"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
-
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="flex justify-center mt-4 space-x-2">

@@ -16,7 +16,7 @@ export default function AdminPatients() {
   const [showEditModal, setShowEditModal] = useState(false);
 
   // Form data
-  const initialFormState = { name: "", email: "", phone: "" };
+  const initialFormState = { name: "", email: "", phone: "", password: "" };
   const [formData, setFormData] = useState(initialFormState);
   const [editPatientId, setEditPatientId] = useState(null);
 
@@ -79,6 +79,7 @@ export default function AdminPatients() {
       name: patient.name || "",
       email: patient.email || "",
       phone: patient.phone || "",
+      password: "", // blank here, user can enter new password if needed
     });
     setShowEditModal(true);
   };
@@ -99,11 +100,9 @@ export default function AdminPatients() {
     }
 
     try {
-      await axios.post(
-        "http://localhost:5000/api/patients",
-        { ...formData, phone: formData.phone || "" },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.post("http://localhost:5000/api/patients", formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       toast.success("Patient added");
       setShowAddModal(false);
       fetchPatients();
@@ -128,9 +127,19 @@ export default function AdminPatients() {
     }
 
     try {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      };
+
+      if (formData.password && formData.password.trim() !== "") {
+        payload.password = formData.password;
+      }
+
       await axios.put(
         `http://localhost:5000/api/patients/${editPatientId}`,
-        formData,
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Patient updated");
@@ -319,6 +328,16 @@ export default function AdminPatients() {
                   value={formData.phone}
                   onChange={handleChange}
                   className="w-full border p-2 rounded"
+                  required
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  required
                 />
                 <button
                   type="submit"
@@ -369,6 +388,14 @@ export default function AdminPatients() {
                   name="phone"
                   placeholder="Phone"
                   value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="New Password (leave blank to keep current)"
+                  value={formData.password}
                   onChange={handleChange}
                   className="w-full border p-2 rounded"
                 />

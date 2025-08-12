@@ -23,11 +23,11 @@ export default function PatientProfile() {
     }
 
     axios
-      .get("http://localhost:5000/api/patient/profile", {
+      .get("http://localhost:5000/api/patients/profile", {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        const data = res.data.user || res.data;
+        const data = res.data?.user || res.data || {};
         setProfile({
           name: data.name || "",
           email: data.email || "",
@@ -61,7 +61,7 @@ export default function PatientProfile() {
 
     try {
       const res = await axios.put(
-        "http://localhost:5000/api/patient/profile",
+        "http://localhost:5000/api/patients/profile",
         {
           name: profile.name,
           email: profile.email,

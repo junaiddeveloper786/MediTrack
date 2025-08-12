@@ -1,11 +1,11 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const doctorRoutes = require("./routes/doctorRoutes");
-
 require("dotenv").config();
 
+// Route imports
 const authRoutes = require("./routes/authRoutes");
+const doctorRoutes = require("./routes/doctorRoutes");
 const slotRoutes = require("./routes/slotRoutes");
 const appointmentRoutes = require("./routes/appointmentRoutes");
 const patientRoutes = require("./routes/patientRoutes");
@@ -23,17 +23,12 @@ app.use("/api/slots", slotRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/patients", patientRoutes);
 
-// MongoDB Connection
+// MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB connected");
-
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
-  .catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
-  });
+  .catch((err) => console.error("❌ MongoDB connection error:", err));

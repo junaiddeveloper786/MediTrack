@@ -1,4 +1,5 @@
-const User = require("../models/User"); // Use User model instead of Patient
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
 
 // Get all patients with optional search by name, email or phone
 exports.getPatients = async (req, res) => {
@@ -7,7 +8,7 @@ exports.getPatients = async (req, res) => {
     const regex = new RegExp(search, "i"); // case insensitive
 
     const patients = await User.find({
-      role: "user", // Only users with role "user" (patients)
+      role: "user",
       $or: [{ name: regex }, { email: regex }, { phone: regex }],
     }).sort({ createdAt: -1 });
 
@@ -32,12 +33,14 @@ exports.getPatientById = async (req, res) => {
   }
 };
 
-// Create new patient without gender and DOB
+// Create new patient with password hashing
 exports.createPatient = async (req, res) => {
   try {
-    const { name, email, phone } = req.body;
-    if (!name || !email) {
-      return res.status(400).json({ message: "Name and email are required" });
+    const { name, email, phone, password } = req.body;
+    if (!name || !email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Name, email and password are required" });
     }
 
     const existing = await User.findOne({ email });
@@ -45,37 +48,61 @@ exports.createPatient = async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-    const patient = new User({ name, email, phone, role: "user" });
+    // Hash password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const patient = new User({
+      name,
+      email,
+      phone,
+      password: hashedPassword,
+      role: "user",
+    });
     await patient.save();
 
-    res.status(201).json({ message: "Patient created", patient });
+    // Return patient without password
+    const patientSafe = patient.toObject();
+    delete patientSafe.password;
+
+    res.status(201).json({ message: "Patient created", patient: patientSafe });
   } catch (err) {
     console.error("createPatient error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
-// Update patient by ID (no gender or dob)
+// Update patient by ID with optional password update
 exports.updatePatient = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone } = req.body;
+    const { name, email, phone, password } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({ message: "Name and email are required" });
     }
 
-    // Check email uniqueness except current patient
+    // Check if email already exists (except current patient)
     const existing = await User.findOne({ email, _id: { $ne: id } });
     if (existing) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
+    // Prepare update object
+    const updateData = { name, email, phone };
+
+    // Only hash and update password if password provided and not empty
+    if (password && password.trim() !== "") {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(password, salt);
+    }
+
+    // Update patient document
     const updatedPatient = await User.findOneAndUpdate(
       { _id: id, role: "user" },
-      { name, email, phone },
+      updateData,
       { new: true, runValidators: true }
-    );
+    ).select("-password");
 
     if (!updatedPatient) {
       return res.status(404).json({ message: "Patient not found" });
@@ -121,21 +148,31 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// Update logged-in patient profile
+// Update logged-in patient profile with optional password update
 exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { name, email, phone } = req.body;
+    const { name, email, phone, password } = req.body;
 
-    // Check email uniqueness except current user
+    if (!name || !email) {
+      return res.status(400).json({ message: "Name and email are required" });
+    }
+
     const existing = await User.findOne({ email, _id: { $ne: userId } });
     if (existing) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
+    const updateData = { name, email, phone };
+
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(password, salt);
+    }
+
     const updatedUser = await User.findOneAndUpdate(
       { _id: userId, role: "user" },
-      { name, email, phone },
+      updateData,
       { new: true, runValidators: true }
     ).select("-password -__v");
 
@@ -146,6 +183,14 @@ exports.updateProfile = async (req, res) => {
     res.json({ message: "Profile updated", user: updatedUser });
   } catch (err) {
     console.error("updateProfile error:", err);
+
+    // Add more descriptive error output
+    if (err.name === "ValidationError") {
+      return res
+        .status(400)
+        .json({ message: "Validation error", errors: err.errors });
+    }
+
     res
       .status(500)
       .json({ message: "Failed to update profile", error: err.message });

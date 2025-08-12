@@ -1,44 +1,52 @@
-// controllers/slotController.js
-const Slot = require("../models/Slot");
+const Slot = require("../models/slot");
 
-// ✅ Create slots in a date range
+// ✅ Create slots in a date & time range
 exports.createSlotsInRange = async (req, res) => {
   try {
-    const { doctorId, startDate, endDate, startTime, endTime, slotDuration } =
+    const { doctorId, fromDate, toDate, startTime, endTime, slotDuration } =
       req.body;
 
-    if (
-      !doctorId ||
-      !startDate ||
-      !endDate ||
-      !startTime ||
-      !endTime ||
-      !slotDuration
+    const startDate = new Date(fromDate);
+    const endDate = new Date(toDate);
+    const slots = [];
+
+    for (
+      let currentDate = new Date(startDate);
+      currentDate <= endDate;
+      currentDate.setDate(currentDate.getDate() + 1)
     ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
-    }
+      const [startHour, startMinute] = startTime.split(":").map(Number);
+      const [endHour, endMinute] = endTime.split(":").map(Number);
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+      let currentTime = new Date(currentDate);
+      currentTime.setHours(startHour, startMinute, 0, 0);
 
-    let slots = [];
+      const endOfDayTime = new Date(currentDate);
+      endOfDayTime.setHours(endHour, endMinute, 0, 0);
 
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      let currentTime = new Date(
-        `${d.toISOString().split("T")[0]}T${startTime}`
-      );
-      let endTimeDate = new Date(`${d.toISOString().split("T")[0]}T${endTime}`);
-
-      while (currentTime < endTimeDate) {
+      while (currentTime < endOfDayTime) {
         const nextTime = new Date(currentTime.getTime() + slotDuration * 60000);
+
+        const sHour = currentTime.getHours();
+        const sMinute = currentTime.getMinutes();
+        const eHour = nextTime.getHours();
+        const eMinute = nextTime.getMinutes();
+
+        const startTimeValue = `${String(sHour).padStart(2, "0")}:${String(
+          sMinute
+        ).padStart(2, "0")}`;
+        const endTimeValue = `${String(eHour).padStart(2, "0")}:${String(
+          eMinute
+        ).padStart(2, "0")}`;
 
         slots.push({
           doctorId,
-          date: new Date(d),
-          startTime: new Date(currentTime),
-          endTime: new Date(nextTime),
+          date: new Date(currentDate),
+          day: currentDate.toLocaleString("en-US", { weekday: "long" }),
+          startTime: startTimeValue,
+          endTime: endTimeValue,
+          startMinutes: sHour * 60 + sMinute,
+          endMinutes: eHour * 60 + eMinute,
           isBooked: false,
         });
 
@@ -46,131 +54,96 @@ exports.createSlotsInRange = async (req, res) => {
       }
     }
 
-    const createdSlots = await Slot.insertMany(slots);
-    res.status(201).json({
-      success: true,
-      message: "Slots created successfully",
-      data: createdSlots,
-    });
-  } catch (err) {
-    console.error("createSlotsInRange error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create slots",
-      error: err.message,
-    });
+    await Slot.insertMany(slots);
+    res
+      .status(201)
+      .json({ message: "Slots created successfully", count: slots.length });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error creating slots", error: error.message });
   }
 };
 
-// ✅ Get all slots (admin/doctor view)
+// ✅ Get slots with optional filtering
 exports.getSlots = async (req, res) => {
   try {
-    const { doctorId, date } = req.query;
-    let filter = {};
+    const { doctorId, date, startTime, endTime, isBooked } = req.query;
+    const filter = {};
 
     if (doctorId) filter.doctorId = doctorId;
+    if (isBooked !== undefined) filter.isBooked = isBooked === "true";
+
     if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      filter.date = { $gte: startOfDay, $lte: endOfDay };
+      const selectedDate = new Date(date);
+      selectedDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(selectedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      filter.date = { $gte: selectedDate, $lt: nextDay };
     }
 
-    const slots = await Slot.find(filter)
-      .populate("doctorId", "name")
-      .sort({ date: 1, startTime: 1 });
-    res.status(200).json({ success: true, slots });
-  } catch (err) {
-    console.error("getSlots error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch slots",
-      error: err.message,
-    });
+    if (startTime && endTime) {
+      const [startHour, startMinute] = startTime.split(":").map(Number);
+      const [endHour, endMinute] = endTime.split(":").map(Number);
+
+      const startTotalMinutes = startHour * 60 + startMinute;
+      const endTotalMinutes = endHour * 60 + endMinute;
+
+      filter.startMinutes = { $gte: startTotalMinutes };
+      filter.endMinutes = { $lte: endTotalMinutes };
+    }
+
+    const slots = await Slot.find(filter).sort({ date: 1, startMinutes: 1 });
+    res.status(200).json(slots);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching slots", error: error.message });
   }
 };
 
-// ✅ Get available slots for booking (patient view)
-exports.getAvailableSlotsByDate = async (req, res) => {
-  try {
-    const { doctorId, date } = req.query;
-
-    if (!doctorId || !date) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Doctor ID and date are required" });
-    }
-
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const slots = await Slot.find({
-      doctorId,
-      date: { $gte: startOfDay, $lte: endOfDay },
-      isBooked: { $ne: true },
-    })
-      .populate("doctorId", "name")
-      .sort({ startTime: 1 });
-
-    res.status(200).json({ success: true, slots });
-  } catch (err) {
-    console.error("getAvailableSlotsByDate error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch available slots",
-      error: err.message,
-    });
-  }
-};
-
-// ✅ Update slot
+// ✅ Update a slot
 exports.updateSlot = async (req, res) => {
   try {
-    const slot = await Slot.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-    if (!slot) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Slot not found" });
+    const { id } = req.params;
+    const { startTime, endTime, isBooked } = req.body;
+
+    const updateData = {};
+    if (startTime) {
+      const [sHour, sMinute] = startTime.split(":").map(Number);
+      updateData.startTime = startTime;
+      updateData.startMinutes = sHour * 60 + sMinute;
     }
-    res.status(200).json({
-      success: true,
-      message: "Slot updated successfully",
-      data: slot,
-    });
-  } catch (err) {
-    console.error("updateSlot error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update slot",
-      error: err.message,
-    });
+    if (endTime) {
+      const [eHour, eMinute] = endTime.split(":").map(Number);
+      updateData.endTime = endTime;
+      updateData.endMinutes = eHour * 60 + eMinute;
+    }
+    if (isBooked !== undefined) updateData.isBooked = isBooked;
+
+    const slot = await Slot.findByIdAndUpdate(id, updateData, { new: true });
+    if (!slot) return res.status(404).json({ message: "Slot not found" });
+
+    res.status(200).json({ message: "Slot updated successfully", slot });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error updating slot", error: error.message });
   }
 };
 
-// ✅ Delete slot
+// ✅ Delete a slot
 exports.deleteSlot = async (req, res) => {
   try {
-    const slot = await Slot.findByIdAndDelete(req.params.id);
-    if (!slot) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Slot not found" });
-    }
+    const { id } = req.params;
+    const slot = await Slot.findByIdAndDelete(id);
+    if (!slot) return res.status(404).json({ message: "Slot not found" });
+
+    res.status(200).json({ message: "Slot deleted successfully" });
+  } catch (error) {
     res
-      .status(200)
-      .json({ success: true, message: "Slot deleted successfully" });
-  } catch (err) {
-    console.error("deleteSlot error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete slot",
-      error: err.message,
-    });
+      .status(500)
+      .json({ message: "Error deleting slot", error: error.message });
   }
 };
