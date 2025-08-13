@@ -12,7 +12,7 @@ export default function BookAppointment() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [booking, setBooking] = useState(false);
+  const [bookingSlotId, setBookingSlotId] = useState(null);
 
   const navigate = useNavigate();
   const API = "http://localhost:5000/api";
@@ -49,12 +49,15 @@ export default function BookAppointment() {
       const dateStr = selectedDate.toISOString().split("T")[0];
       const res = await axios.get(`${API}/slots/available`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { doctorId: selectedDoctor, date: dateStr },
+        params: {
+          doctorId: selectedDoctor,
+          date: dateStr,
+        },
       });
       setSlots(res.data.slots || []);
     } catch (err) {
       console.error("fetchSlots:", err);
-      toast.error("Failed to fetch slots");
+      toast.error(err.response?.data?.message || "Failed to fetch slots");
     } finally {
       setLoadingSlots(false);
     }
@@ -65,19 +68,23 @@ export default function BookAppointment() {
       toast.error("User info missing. Please login again.");
       return;
     }
-    setBooking(true);
+
+    setBookingSlotId(slot._id); // set loading state for this slot
+
     try {
       const payload = {
         patientId: user.id,
-        doctorId: selectedDoctor,
+        doctorId: slot.doctorId?._id || selectedDoctor,
         slotId: slot._id,
-        date: selectedDate.toISOString(),
+        date: slot.date,
         startTime: slot.startTime,
         endTime: slot.endTime,
       };
+
       await axios.post(`${API}/appointments`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       toast.success("Appointment booked!");
       navigate("/patient/appointments");
     } catch (err) {
@@ -85,21 +92,19 @@ export default function BookAppointment() {
       const msg = err.response?.data?.message || "Booking failed";
       toast.error(msg);
     } finally {
-      setBooking(false);
+      setBookingSlotId(null); // reset loading state
     }
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
-      {/* Sidebar */}
       <PatientSidebar />
-
-      {/* Main Content */}
       <main className="flex-1 p-6">
         <div className="max-w-5xl mx-auto">
           <h1 className="text-2xl font-semibold mb-4">Book Appointment</h1>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Left Side */}
             <div className="md:col-span-1 bg-white p-4 rounded shadow">
               <label className="block text-sm text-gray-600 mb-2">
                 Choose Doctor
@@ -134,6 +139,7 @@ export default function BookAppointment() {
               </button>
             </div>
 
+            {/* Right Side */}
             <div className="md:col-span-2 bg-white p-4 rounded shadow">
               <h2 className="text-lg font-semibold mb-3">Available Slots</h2>
 
@@ -148,32 +154,51 @@ export default function BookAppointment() {
                   No slots available for this date.
                 </p>
               ) : (
-                <div className="grid gap-3">
-                  {slots.map((slot) => (
-                    <div
-                      key={slot._id}
-                      className="flex items-center justify-between p-3 border rounded"
-                    >
-                      <div>
-                        <div className="font-medium">
-                          {slot.startTime} - {slot.endTime}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {slot.day} •{" "}
-                          {new Date(slot.date).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div>
+                <div className="space-y-2">
+                  {slots.map((slot) => {
+                    const slotDate = new Date(slot.date);
+                    const start = new Date(slot.startTime);
+                    const end = new Date(slot.endTime);
+
+                    const dayName = slotDate.toLocaleDateString("en-US", {
+                      weekday: "long",
+                    });
+                    const dateStr = slotDate.toLocaleDateString("en-GB");
+                    const startTimeStr = start.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    });
+                    const endTimeStr = end.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    });
+
+                    return (
+                      <div
+                        key={slot._id}
+                        className="flex justify-between items-center border-b py-2 px-3 bg-white rounded-md shadow-sm hover:shadow-md transition"
+                      >
+                        <span className="font-medium text-gray-800">
+                          {dayName} &nbsp;&nbsp; {dateStr} &nbsp;&nbsp;{" "}
+                          {startTimeStr} - {endTimeStr}
+                        </span>
+
                         <button
-                          disabled={booking}
                           onClick={() => handleBook(slot)}
-                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-60"
+                          disabled={bookingSlotId === slot._id} // disable when loading
+                          className={`px-4 py-1 rounded-md transition ${
+                            bookingSlotId === slot._id
+                              ? "bg-blue-400 text-white cursor-not-allowed"
+                              : "bg-blue-600 hover:bg-blue-700 text-white"
+                          }`}
                         >
-                          {booking ? "Booking..." : "Book"}
+                          {bookingSlotId === slot._id ? "Booking..." : "Book"}
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

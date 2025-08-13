@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaPlus, FaEdit, FaTrash, FaTimes } from "react-icons/fa";
+import { FaEdit, FaTrash, FaTimes } from "react-icons/fa";
 import axios from "axios";
 import { toast } from "react-toastify";
 import AdminSidebar from "../../components/AdminSidebar"; // adjust path if needed
@@ -18,7 +18,10 @@ const DoctorManagement = () => {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const doctorsPerPage = 5;
+  const doctorsPerPage = 10;
+
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchDoctors = async () => {
     try {
@@ -78,11 +81,22 @@ const DoctorManagement = () => {
     }
   };
 
-  // Pagination Logic
+  // Filter doctors by search term (name, email, phone)
+  const filteredDoctors = doctors.filter(
+    (doc) =>
+      (doc.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (doc.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (doc.phone || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination Logic on filtered list
   const indexOfLastDoctor = currentPage * doctorsPerPage;
   const indexOfFirstDoctor = indexOfLastDoctor - doctorsPerPage;
-  const currentDoctors = doctors.slice(indexOfFirstDoctor, indexOfLastDoctor);
-  const totalPages = Math.ceil(doctors.length / doctorsPerPage);
+  const currentDoctors = filteredDoctors.slice(
+    indexOfFirstDoctor,
+    indexOfLastDoctor
+  );
+  const totalPages = Math.ceil(filteredDoctors.length / doctorsPerPage);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -93,13 +107,25 @@ const DoctorManagement = () => {
 
       {/* Main Content */}
       <main className="flex-1 p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Doctor Management</h2>
+        <h2 className="text-2xl font-bold mb-4">Doctor Management</h2>
+        <div className="flex justify-between items-center mb-4">
+          {/* Search bar */}
+          <input
+            type="text"
+            placeholder="Search by name, email or phone..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1); // reset page on new search
+            }}
+            className="border p-2 rounded w-full max-w-md"
+          />
+          {/* Add Doctor Button */}
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="ml-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
           >
-            <FaPlus className="mr-2" /> Add Doctor
+            Add Doctor
           </button>
         </div>
 
@@ -115,29 +141,37 @@ const DoctorManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {currentDoctors.map((doc) => (
-                <tr key={doc._id}>
-                  <td className="py-2 px-4 border-b">{doc.name}</td>
-                  <td className="py-2 px-4 border-b">{doc.email}</td>
-                  <td className="py-2 px-4 border-b">{doc.specialty}</td>
-                  <td className="py-2 px-4 border-b">{doc.phone}</td>
-                  <td className="py-2 px-4 border-b space-x-2">
-                    <button
-                      className="text-yellow-600 hover:text-yellow-800"
-                      onClick={() => handleEditClick(doc)}
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      className="text-red-600 hover:text-red-800"
-                      onClick={() => handleDelete(doc._id)}
-                    >
-                      <FaTrash />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {doctors.length === 0 && (
+              {currentDoctors.length > 0 ? (
+                currentDoctors.map((doc) => (
+                  <tr
+                    key={doc._id}
+                    className={
+                      currentDoctors.indexOf(doc) % 2 === 0
+                        ? "bg-gray-50"
+                        : "bg-white"
+                    }
+                  >
+                    <td className="py-2 px-4 border-b">{doc.name}</td>
+                    <td className="py-2 px-4 border-b">{doc.email}</td>
+                    <td className="py-2 px-4 border-b">{doc.specialty}</td>
+                    <td className="py-2 px-4 border-b">{doc.phone}</td>
+                    <td className="py-2 px-4 border-b space-x-2">
+                      <button
+                        className="text-yellow-600 hover:text-yellow-800"
+                        onClick={() => handleEditClick(doc)}
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        className="text-red-600 hover:text-red-800"
+                        onClick={() => handleDelete(doc._id)}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
                   <td colSpan="5" className="py-4 text-center text-gray-500">
                     No doctors found.
@@ -149,7 +183,7 @@ const DoctorManagement = () => {
         </div>
 
         {/* Pagination Controls */}
-        {doctors.length > doctorsPerPage && (
+        {filteredDoctors.length > doctorsPerPage && (
           <div className="flex justify-center mt-4 space-x-2">
             <button
               onClick={() => paginate(currentPage - 1)}

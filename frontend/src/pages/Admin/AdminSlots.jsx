@@ -10,6 +10,7 @@ export default function AdminSlots() {
   const [doctors, setDoctors] = useState([]);
   const [slots, setSlots] = useState([]);
   const [editingSlotId, setEditingSlotId] = useState(null);
+  const [editSlotDate, setEditSlotDate] = useState("");
 
   // form fields
   const [doctorId, setDoctorId] = useState("");
@@ -61,7 +62,7 @@ export default function AdminSlots() {
 
       const res = await axios.get(url);
       setSlots(res.data.slots || []);
-      setCurrentPage(1); // Reset to first page when data changes
+      setCurrentPage(1);
     } catch (err) {
       console.error("fetchSlots error:", err);
       toast.error("Failed to fetch slots");
@@ -134,17 +135,27 @@ export default function AdminSlots() {
   };
 
   // update slot
-  const handleUpdate = async (id) => {
+  const handleUpdate = async (id, slotDate) => {
     if (!editStartTime || !editEndTime) {
       toast.error("Start time and End time are required");
       return;
     }
 
     try {
+      // Combine date + time before sending to backend
+      const startDateTime = new Date(`${slotDate}T${editStartTime}`);
+      const endDateTime = new Date(`${slotDate}T${editEndTime}`);
+
+      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+        toast.error("Invalid date/time");
+        return;
+      }
+
       const res = await axios.put(`http://localhost:5000/api/slots/${id}`, {
-        startTime: editStartTime,
-        endTime: editEndTime,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
       });
+
       if (res.data.success) {
         toast.success("Slot updated successfully");
         setEditingSlotId(null);
@@ -335,7 +346,7 @@ export default function AdminSlots() {
           <div>
             <button
               onClick={applyFilter}
-              className="bg-green-600 text-white px-4 py-2 rounded"
+              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
             >
               Apply
             </button>
@@ -346,7 +357,7 @@ export default function AdminSlots() {
                 setFilterTo(null);
                 fetchSlots();
               }}
-              className="ml-2 bg-gray-200 px-3 py-2 rounded"
+              className="ml-2 bg-gray-300 px-6 py-2 rounded hover:bg-gray-400 transition"
             >
               Clear
             </button>
@@ -379,9 +390,8 @@ export default function AdminSlots() {
                     <td className="p-2">{slot.doctorId?.name || "N/A"}</td>
                     <td className="p-2">{slot.day}</td>
                     <td className="p-2">
-                      {new Date(slot.date).toLocaleDateString()}
+                      {new Date(slot.date).toLocaleDateString("en-GB")}
                     </td>
-
                     <td className="p-2">
                       {editingSlotId === slot._id ? (
                         <>
@@ -439,14 +449,14 @@ export default function AdminSlots() {
                       {editingSlotId === slot._id ? (
                         <>
                           <button
-                            onClick={() => handleUpdate(slot._id)}
-                            className="bg-green-600 text-white px-2 py-1 rounded"
+                            onClick={() => handleUpdate(slot._id, editSlotDate)}
+                            className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition"
                           >
                             Save
                           </button>
                           <button
                             onClick={() => setEditingSlotId(null)}
-                            className="bg-gray-400 text-white px-2 py-1 rounded"
+                            className="bg-gray-300 text-black px-2 py-1 rounded hover:bg-gray-400 transition"
                           >
                             Cancel
                           </button>
@@ -466,14 +476,17 @@ export default function AdminSlots() {
                                   .toISOString()
                                   .slice(11, 16)
                               );
+                              setEditSlotDate(
+                                new Date(slot.date).toISOString().slice(0, 10)
+                              ); // "YYYY-MM-DD"
                             }}
-                            className="bg-blue-500 text-white px-2 py-1 rounded"
+                            className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDelete(slot._id)}
-                            className="bg-red-500 text-white px-2 py-1 rounded"
+                            className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition"
                           >
                             Delete
                           </button>

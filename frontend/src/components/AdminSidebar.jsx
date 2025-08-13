@@ -5,10 +5,10 @@ import {
   FaUsers,
   FaCalendarCheck,
   FaHospitalSymbol,
+  FaSignOutAlt,
   FaUser,
 } from "react-icons/fa";
 import { MdDashboard } from "react-icons/md";
-import { IoLogOutOutline } from "react-icons/io5";
 
 function AdminSidebar() {
   const location = useLocation();
@@ -72,7 +72,7 @@ function AdminSidebar() {
           }}
           className="flex items-center gap-3 py-3 px-5 rounded-lg cursor-pointer hover:bg-blue-800"
         >
-          <IoLogOutOutline size={20} className="text-blue-200" />
+          <FaSignOutAlt size={20} />
           <span className="text-sm">Logout</span>
         </div>
       </div>

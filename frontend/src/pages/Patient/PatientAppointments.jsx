@@ -3,6 +3,17 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import PatientSidebar from "../../components/PatientSidebar";
 
+// Helper function to format time in "hh:mm AM/PM" format
+function formatTime(timeStr) {
+  if (!timeStr) return "";
+  const [hourStr, minStr] = timeStr.split(":");
+  let hour = parseInt(hourStr, 10);
+  const minute = minStr;
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12; // convert 0 => 12 for 12AM
+  return `${hour.toString().padStart(2, "0")}:${minute} ${ampm}`;
+}
+
 export default function PatientAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +71,7 @@ export default function PatientAppointments() {
 
       toast.success("Appointment cancelled successfully");
 
-      // Remove cancelled appointment from the list (so it disappears immediately)
+      // Remove cancelled appointment from the list immediately
       setAppointments((prev) =>
         prev.filter((appt) => appt._id !== appointmentId)
       );
@@ -89,6 +100,7 @@ export default function PatientAppointments() {
             <thead className="bg-blue-600 text-white">
               <tr>
                 <th className="p-3">Doctor</th>
+                <th className="p-3">Day</th>
                 <th className="p-3">Date</th>
                 <th className="p-3">Time</th>
                 <th className="p-3">Status</th>
@@ -96,31 +108,40 @@ export default function PatientAppointments() {
               </tr>
             </thead>
             <tbody>
-              {appointments.map((appt) => (
-                <tr key={appt._id} className="border-b">
-                  <td className="p-3">{appt.doctorId?.name || "N/A"}</td>
-                  <td className="p-3">
-                    {new Date(appt.date).toLocaleDateString("en-GB")}
-                  </td>
-                  <td className="p-3">
-                    {appt.startTime} - {appt.endTime}
-                  </td>
-                  <td className="p-3">{appt.status || "Scheduled"}</td>
-                  <td className="p-3">
-                    {appt.status !== "Cancelled" ? (
-                      <button
-                        onClick={() => handleCancel(appt._id)}
-                        disabled={cancellingId === appt._id}
-                        className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 disabled:opacity-50"
-                      >
-                        {cancellingId === appt._id ? "Cancelling..." : "Cancel"}
-                      </button>
-                    ) : (
-                      <span className="text-gray-500 italic">Cancelled</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {appointments.map((appt) => {
+                const apptDate = new Date(appt.date);
+                const dayName = apptDate.toLocaleDateString("en-US", {
+                  weekday: "long",
+                });
+                return (
+                  <tr key={appt._id} className="border-b">
+                    <td className="p-3">{appt.doctorId?.name || "N/A"}</td>
+                    <td className="p-3">{dayName}</td>
+                    <td className="p-3">
+                      {apptDate.toLocaleDateString("en-GB")}
+                    </td>
+                    <td className="p-3">
+                      {formatTime(appt.startTime)} - {formatTime(appt.endTime)}
+                    </td>
+                    <td className="p-3">{appt.status || "Scheduled"}</td>
+                    <td className="p-3">
+                      {appt.status !== "Cancelled" ? (
+                        <button
+                          onClick={() => handleCancel(appt._id)}
+                          disabled={cancellingId === appt._id}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {cancellingId === appt._id
+                            ? "Cancelling..."
+                            : "Cancel"}
+                        </button>
+                      ) : (
+                        <span className="text-gray-500 italic">Cancelled</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

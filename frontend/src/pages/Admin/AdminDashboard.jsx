@@ -41,14 +41,12 @@ function AdminDashboard() {
       {/* Main Content */}
       <main className="flex-1 p-8">
         {/* Top Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Admin Dashboard
-          </h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
           <KPI
             color="bg-blue-500"
             icon={<FaUserMd />}
@@ -77,39 +75,52 @@ function AdminDashboard() {
 
         {/* Calendar + Recent Appointments */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white shadow rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4">
+          <div className="bg-white shadow-lg rounded-xl p-5">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">
               Appointments Overview
             </h3>
-            <Calendar className="w-full border-none" />
+            <Calendar
+              className="w-full border-none rounded-lg shadow-sm"
+              tileClassName="p-2"
+            />
           </div>
 
-          <div className="bg-white shadow rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4">Recent Appointments</h3>
-            <table className="w-full text-sm">
-              <thead className="text-left text-gray-600 border-b">
+          <div className="bg-white shadow-lg rounded-xl p-5">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+              Recent Appointments
+            </h3>
+            <table className="w-full text-sm border-collapse">
+              <thead className="text-gray-600 border-b">
                 <tr>
-                  <th className="py-2">Patient</th>
-                  <th>Doctor</th>
-                  <th>Date</th>
-                  <th>Time</th>
+                  <th className="py-2 px-3 text-left">Patient</th>
+                  <th className="px-3 text-left">Doctor</th>
+                  <th className="px-3 text-left">Date</th>
+                  <th className="px-3 text-left">Time</th>
                 </tr>
               </thead>
               <tbody>
-                {recentAppointments.map((a, i) => (
-                  <tr key={i} className="border-t">
-                    <td className="py-2">{a.patient?.name}</td>
-                    <td>{a.doctor?.name}</td>
-                    <td>{new Date(a.slot).toLocaleDateString()}</td>
-                    <td>
-                      {new Date(a.slot).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                  </tr>
-                ))}
-                {recentAppointments.length === 0 && (
+                {recentAppointments.length > 0 ? (
+                  recentAppointments.map((a, i) => (
+                    <tr
+                      key={i}
+                      className={`border-t ${
+                        i % 2 === 0 ? "bg-gray-50" : "bg-white"
+                      }`}
+                    >
+                      <td className="py-2 px-3">{a.patient?.name}</td>
+                      <td className="px-3">{a.doctor?.name}</td>
+                      <td className="px-3">
+                        {new Date(a.slot).toLocaleDateString()}
+                      </td>
+                      <td className="px-3">
+                        {new Date(a.slot).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
                   <tr>
                     <td colSpan="4" className="py-4 text-center text-gray-500">
                       No recent appointments found.
@@ -128,12 +139,12 @@ function AdminDashboard() {
 function KPI({ icon, label, value, color }) {
   return (
     <div
-      className={`p-4 rounded-lg text-white shadow flex items-center justify-between ${color}`}
+      className={`p-5 rounded-xl text-white shadow-md flex items-center gap-4 ${color}`}
     >
       <div className="text-3xl">{icon}</div>
-      <div className="text-right">
-        <div className="text-sm">{label}</div>
-        <div className="text-xl font-bold">{value || 0}</div>
+      <div>
+        <div className="text-sm opacity-80">{label}</div>
+        <div className="text-2xl font-bold">{value || 0}</div>
       </div>
     </div>
   );
