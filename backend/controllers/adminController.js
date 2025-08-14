@@ -1,22 +1,21 @@
-const User = require("../models/userModel");
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
 
-// GET /api/admin/profile
-const getAdminProfile = async (req, res) => {
+// GET admin profile
+exports.getAdminProfile = async (req, res) => {
   try {
-    const admin = await User.findById(req.user.id).select("-password");
-    if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
-    }
-    res.json(admin);
-  } catch (error) {
+    res.json(req.user); // req.user already set by protect middleware
+  } catch (err) {
+    console.error("Error fetching admin profile:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// PUT /api/admin/profile
-const updateAdminProfile = async (req, res) => {
+// UPDATE admin profile
+exports.updateAdminProfile = async (req, res) => {
   try {
-    const admin = await User.findById(req.user.id);
+    const admin = await User.findById(req.user._id);
+
     if (!admin) {
       return res.status(404).json({ message: "Admin not found" });
     }
@@ -26,7 +25,8 @@ const updateAdminProfile = async (req, res) => {
     admin.phone = req.body.phone || admin.phone;
 
     if (req.body.password) {
-      admin.password = req.body.password; // bcrypt will hash it from pre-save hook
+      const salt = await bcrypt.genSalt(10);
+      admin.password = await bcrypt.hash(req.body.password, salt);
     }
 
     const updatedAdmin = await admin.save();
@@ -39,9 +39,8 @@ const updateAdminProfile = async (req, res) => {
       role: updatedAdmin.role,
       createdAt: updatedAdmin.createdAt,
     });
-  } catch (error) {
+  } catch (err) {
+    console.error("Error updating admin profile:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
-
-module.exports = { getAdminProfile, updateAdminProfile };

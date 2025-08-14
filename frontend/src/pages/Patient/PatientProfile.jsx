@@ -11,8 +11,14 @@ export default function PatientProfile() {
     role: "",
   });
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -34,6 +40,12 @@ export default function PatientProfile() {
           phone: data.phone || "",
           role: data.role || "",
         });
+        setFormData({
+          name: data.name || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          password: "",
+        });
       })
       .catch((err) => {
         console.error("Failed to load profile", err.response || err.message);
@@ -44,35 +56,41 @@ export default function PatientProfile() {
       .finally(() => setLoading(false));
   }, []);
 
-  // For form field changes
   const handleChange = (e) => {
-    setProfile((prev) => ({
+    setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
   };
 
-  // Update profile to backend
-  const handleUpdate = async (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
 
     const token = localStorage.getItem("token");
 
     try {
-      const res = await axios.put(
+      await axios.put(
         "http://localhost:5000/api/patients/profile",
         {
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password || undefined,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+
       toast.success("Profile updated successfully!");
-      setEditing(false);
+      setProfile({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        role: profile.role,
+      });
+      setShowEditModal(false);
     } catch (err) {
       console.error("Update failed", err.response || err.message);
       toast.error(err.response?.data?.message || "Failed to update profile");
@@ -89,107 +107,86 @@ export default function PatientProfile() {
       <main className="flex-1 p-6 max-w-3xl mx-auto">
         <h1 className="text-2xl font-semibold mb-6">My Profile</h1>
 
-        {!editing ? (
-          <div className="bg-white p-6 rounded shadow space-y-4 max-w-md">
-            <div>
-              <strong>Name:</strong> {profile.name}
-            </div>
-            <div>
-              <strong>Email:</strong> {profile.email}
-            </div>
-            <div>
-              <strong>Phone:</strong> {profile.phone || "N/A"}
-            </div>
-            <div>
-              <strong>Role:</strong> {profile.role}
-            </div>
-            <button
-              onClick={() => setEditing(true)}
-              className="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
-            >
-              Edit Profile
-            </button>
+        <div className="bg-white p-6 rounded shadow space-y-4 max-w-md">
+          <div>
+            <strong>Name:</strong> {profile.name}
           </div>
-        ) : (
-          <form
-            onSubmit={handleUpdate}
-            className="bg-white p-6 rounded shadow space-y-6 max-w-md"
+          <div>
+            <strong>Email:</strong> {profile.email}
+          </div>
+          <div>
+            <strong>Phone:</strong> {profile.phone || "N/A"}
+          </div>
+          <div>
+            <strong>Role:</strong> {profile.role}
+          </div>
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
           >
-            <div>
-              <label className="block font-medium mb-1" htmlFor="name">
-                Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={profile.name}
-                onChange={handleChange}
-                required
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              />
-            </div>
+            Edit Profile
+          </button>
+        </div>
 
-            <div>
-              <label className="block font-medium mb-1" htmlFor="email">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={profile.email}
-                onChange={handleChange}
-                required
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              />
-            </div>
-
-            <div>
-              <label className="block font-medium mb-1" htmlFor="phone">
-                Phone
-              </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={profile.phone}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              />
-            </div>
-
-            <div>
-              <label className="block font-medium mb-1" htmlFor="role">
-                Role
-              </label>
-              <input
-                id="role"
-                name="role"
-                type="text"
-                value={profile.role}
-                disabled
-                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
-              />
-            </div>
-
-            <div className="flex space-x-3">
+        {/* Edit Modal */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md relative shadow-lg">
               <button
-                type="submit"
-                disabled={updating}
-                className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50"
+                onClick={() => setShowEditModal(false)}
+                className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                aria-label="Close"
               >
-                {updating ? "Updating..." : "Save Changes"}
+                ✕
               </button>
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="bg-gray-400 text-white py-2 px-4 rounded hover:bg-gray-500"
-              >
-                Cancel
-              </button>
+              <h3 className="text-xl font-bold mb-4 text-center">
+                Edit Profile
+              </h3>
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="Phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="New Password (leave blank to keep current)"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                />
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updating ? "Saving..." : "Save Changes"}
+                </button>
+              </form>
             </div>
-          </form>
+          </div>
         )}
       </main>
     </div>

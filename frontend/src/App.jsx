@@ -4,7 +4,6 @@ import "react-toastify/dist/ReactToastify.css";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import DoctorManagement from "./pages/Admin/DoctorManagement";
-import MyAppointments from "./pages/MyAppointments";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminSlots from "./pages/Admin/AdminSlots";
 import AdminAppointments from "./pages/Admin/AdminAppointments";
@@ -14,6 +13,8 @@ import PatientAppointments from "./pages/Patient/PatientAppointments";
 import PatientProfile from "./pages/Patient/PatientProfile";
 import PatientContact from "./pages/Patient/PatientContact";
 import AdminPatients from "./pages/Admin/AdminPatients";
+import AdminProfile from "./pages/Admin/AdminProfile";
+import Reports from "./pages/Admin/Reports";
 
 function App() {
   return (
@@ -25,7 +26,6 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin/doctors" element={<DoctorManagement />} />
-        <Route path="/appointments/my" element={<MyAppointments />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/doctor-slots" element={<AdminSlots />} />
         <Route path="/admin/appointments" element={<AdminAppointments />} />
@@ -35,6 +35,8 @@ function App() {
         <Route path="/patient/profile" element={<PatientProfile />} />
         <Route path="/patient/contact" element={<PatientContact />} />
         <Route path="/admin/patients" element={<AdminPatients />} />
+        <Route path="/admin/profile" element={<AdminProfile />} />
+        <Route path="/admin/reports" element={<Reports />} />
       </Routes>
     </Router>
   );

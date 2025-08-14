@@ -12,6 +12,8 @@
     "@reduxjs/toolkit": "^2.8.2",
     "autoprefixer": "^10.4.16",
     "axios": "^1.11.0",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.536.0",
     "postcss": "^8.4.33",
     "react": "^18.2.0",

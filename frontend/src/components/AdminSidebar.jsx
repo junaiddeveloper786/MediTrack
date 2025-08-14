@@ -7,8 +7,10 @@ import {
   FaHospitalSymbol,
   FaSignOutAlt,
   FaUser,
+  FaFileAlt,
 } from "react-icons/fa";
 import { MdDashboard } from "react-icons/md";
+import { MdEventAvailable } from "react-icons/md";
 
 function AdminSidebar() {
   const location = useLocation();
@@ -56,6 +58,16 @@ function AdminSidebar() {
           to="/admin/doctor-slots"
           icon={<FaCalendarCheck size={18} />}
           label="Doctor Slots"
+        />
+        <SidebarItem
+          to="/admin/appointments"
+          icon={<MdEventAvailable size={18} />}
+          label="Appointments"
+        />
+        <SidebarItem
+          to="/admin/reports"
+          icon={<FaFileAlt size={18} />}
+          label="Reports"
         />
         <SidebarItem
           to="/admin/profile"

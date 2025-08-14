@@ -30,13 +30,13 @@ function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F6FAFF]">
       <div className="bg-white shadow-md rounded-lg p-10 w-[400px]">
-        <div className="flex items-center justify-center mb-6">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
-            +
+        <div className="flex flex-col items-center mb-6">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-800 rounded-full flex items-center justify-center text-white text-4xl font-bold leading-none pb-[6px]">
+              +
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">MediTrack</h1>
           </div>
-          <h1 className="ml-2 text-2xl font-semibold text-gray-800">
-            MediTrack
-          </h1>
         </div>
 
         <h2 className="text-xl font-bold text-gray-700 mb-6 text-center">

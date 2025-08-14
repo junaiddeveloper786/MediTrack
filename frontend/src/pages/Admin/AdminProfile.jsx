@@ -1,169 +1,201 @@
-import React, { useState, useEffect } from "react";
-import AdminSidebar from "../../components/AdminSidebar";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import AdminSidebar from "../../components/AdminSidebar";
 
 export default function AdminProfile() {
-  const [adminData, setAdminData] = useState({
+  const [profile, setProfile] = useState({
     name: "",
     email: "",
     phone: "",
-    role: "Admin",
-    createdAt: "",
+    role: "",
   });
+  const [loading, setLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
+  const [updating, setUpdating] = useState(false);
 
-  const [loading, setLoading] = useState(false);
-  const [editing, setEditing] = useState(false);
-
-  const API = process.env.REACT_APP_API_URL; // Your backend API URL
-  const token = localStorage.getItem("token");
-
-  // Fetch admin details from backend
+  // Fetch profile on mount
   useEffect(() => {
-    const fetchAdmin = async () => {
-      try {
-        setLoading(true);
-        const { data } = await axios.get(`${API}/admin/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("You must login first");
+      setLoading(false);
+      return;
+    }
+
+    axios
+      .get("http://localhost:5000/api/admin/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const data = res.data?.user || res.data || {};
+        setProfile({
+          name: data.name || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          role: data.role || "",
         });
-        setAdminData(data);
-      } catch (error) {
-        toast.error("Failed to load admin profile");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAdmin();
-  }, [API, token]);
+      })
+      .catch((err) => {
+        console.error("Failed to load profile", err.response || err.message);
+        toast.error(
+          err.response?.data?.message || "Failed to load profile data"
+        );
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Open modal with current data
+  const openEditModal = () => {
+    setFormData({
+      name: profile.name,
+      email: profile.email,
+      phone: profile.phone,
+      password: "",
+    });
+    setShowEditModal(true);
+  };
 
   // Handle input change
   const handleChange = (e) => {
-    setAdminData({ ...adminData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
-  // Save updated data
-  const handleSave = async () => {
+  // Update profile API call
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setUpdating(true);
+
+    const token = localStorage.getItem("token");
     try {
-      setLoading(true);
-      await axios.put(`${API}/admin/profile`, adminData, {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      };
+      if (formData.password) {
+        payload.password = formData.password;
+      }
+
+      await axios.put("http://localhost:5000/api/admin/profile", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       toast.success("Profile updated successfully!");
-      setEditing(false);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Update failed");
+      setProfile((prev) => ({
+        ...prev,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      }));
+      setShowEditModal(false);
+    } catch (err) {
+      console.error("Update failed", err.response || err.message);
+      toast.error(err.response?.data?.message || "Failed to update profile");
     } finally {
-      setLoading(false);
+      setUpdating(false);
     }
   };
 
+  if (loading) return <div>Loading profile...</div>;
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Left Sidebar */}
+    <div className="flex min-h-screen bg-gray-50 font-sans">
       <AdminSidebar />
 
-      {/* Right Side */}
-      <main className="flex-1 p-6">
-        <div className="max-w-4xl mx-auto">
-          {/* Page Heading */}
-          <h1 className="text-2xl font-bold mb-6">Admin Profile</h1>
+      <main className="flex-1 p-6 max-w-3xl mx-auto">
+        <h1 className="text-2xl font-semibold mb-6">Admin Profile</h1>
 
-          {loading ? (
-            <p>Loading...</p>
-          ) : (
-            <div className="bg-white rounded-lg shadow p-6 space-y-6">
-              {/* Profile Picture */}
-              <div className="flex flex-col items-center">
-                <img
-                  src="https://via.placeholder.com/120"
-                  alt="Admin"
-                  className="w-28 h-28 rounded-full border-4 border-blue-100 mb-4"
-                />
-                {!editing ? (
-                  <>
-                    <h2 className="text-xl font-semibold">{adminData.name}</h2>
-                    <p className="text-gray-500">{adminData.role}</p>
-                  </>
-                ) : (
-                  <input
-                    type="text"
-                    name="name"
-                    value={adminData.name}
-                    onChange={handleChange}
-                    className="border rounded px-3 py-2 text-center w-60"
-                  />
-                )}
-              </div>
-
-              {/* Editable Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
-                  {!editing ? (
-                    <p className="font-medium">{adminData.email}</p>
-                  ) : (
-                    <input
-                      type="email"
-                      name="email"
-                      value={adminData.email}
-                      onChange={handleChange}
-                      className="border rounded px-3 py-2 w-full"
-                    />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Phone</p>
-                  {!editing ? (
-                    <p className="font-medium">{adminData.phone}</p>
-                  ) : (
-                    <input
-                      type="text"
-                      name="phone"
-                      value={adminData.phone}
-                      onChange={handleChange}
-                      className="border rounded px-3 py-2 w-full"
-                    />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Role</p>
-                  <p className="font-medium">{adminData.role}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Joined On</p>
-                  <p className="font-medium">{adminData.createdAt}</p>
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex justify-end gap-4">
-                {!editing ? (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-                  >
-                    Edit Profile
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setEditing(false)}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-                    >
-                      Save Changes
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+        <div className="bg-white p-6 rounded shadow space-y-4 max-w-md">
+          <div>
+            <strong>Name:</strong> {profile.name}
+          </div>
+          <div>
+            <strong>Email:</strong> {profile.email}
+          </div>
+          <div>
+            <strong>Phone:</strong> {profile.phone || "N/A"}
+          </div>
+          <div>
+            <strong>Role:</strong> {profile.role}
+          </div>
+          <button
+            onClick={openEditModal}
+            className="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+          >
+            Edit Profile
+          </button>
         </div>
+
+        {/* Edit Modal */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md relative shadow-lg">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+              <h3 className="text-xl font-bold mb-4 text-center">
+                Edit Profile
+              </h3>
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="Phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="New Password (leave blank to keep current)"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                />
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updating ? "Saving..." : "Save Changes"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

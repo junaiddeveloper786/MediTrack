@@ -1,9 +1,11 @@
+// pages/admin/AdminAppointments.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import AdminSidebar from "../../components/AdminSidebar";
 
 export default function AdminAppointments() {
   const [appointments, setAppointments] = useState([]);
@@ -74,7 +76,6 @@ export default function AdminAppointments() {
   };
 
   const handleAction = async (id, action) => {
-    // action: 'Confirmed' or 'Cancelled'
     try {
       const body = { status: action };
       await axios.put(`http://localhost:5000/api/appointments/${id}`, body);
@@ -125,189 +126,195 @@ export default function AdminAppointments() {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Admin — Appointments</h2>
+    <div className="flex min-h-screen bg-gray-50 font-sans">
+      {/* Sidebar */}
+      <AdminSidebar />
 
-      {/* Filters */}
-      <div className="flex gap-3 items-end mb-4">
-        <div>
-          <label className="block text-sm">Doctor</label>
-          <select
-            value={filterDoctor}
-            onChange={(e) => setFilterDoctor(e.target.value)}
-            className="border p-2 rounded"
-          >
-            <option value="">All</option>
-            {doctors.map((d) => (
-              <option key={d._id} value={d._id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Main Content */}
+      <main className="flex-1 p-6">
+        <h2 className="text-2xl font-bold mb-4">Admin Appointments</h2>
 
-        <div>
-          <label className="block text-sm">From</label>
-          <DatePicker
-            selected={filterFrom}
-            onChange={(d) => setFilterFrom(d)}
-            className="border p-2 rounded"
-          />
-        </div>
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 items-end mb-4">
+          <div>
+            <label className="block text-sm">Doctor</label>
+            <select
+              value={filterDoctor}
+              onChange={(e) => setFilterDoctor(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="">All</option>
+              {doctors.map((d) => (
+                <option key={d._id} value={d._id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label className="block text-sm">To</label>
-          <DatePicker
-            selected={filterTo}
-            onChange={(d) => setFilterTo(d)}
-            className="border p-2 rounded"
-          />
-        </div>
+          <div>
+            <label className="block text-sm">From</label>
+            <DatePicker
+              selected={filterFrom}
+              onChange={(d) => setFilterFrom(d)}
+              className="border p-2 rounded"
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm">Status</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="border p-2 rounded"
-          >
-            <option value="">All</option>
-            <option value="Pending">Pending</option>
-            <option value="Confirmed">Confirmed</option>
-            <option value="Cancelled">Cancelled</option>
-            <option value="Rescheduled">Rescheduled</option>
-          </select>
-        </div>
+          <div>
+            <label className="block text-sm">To</label>
+            <DatePicker
+              selected={filterTo}
+              onChange={(d) => setFilterTo(d)}
+              className="border p-2 rounded"
+            />
+          </div>
 
-        <div>
-          <button
-            onClick={applyFilter}
-            className="bg-green-600 text-white px-3 py-2 rounded"
-          >
-            Apply
-          </button>
-          <button
-            onClick={clearFilter}
-            className="ml-2 bg-gray-200 px-3 py-2 rounded"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
+          <div>
+            <label className="block text-sm">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="">All</option>
+              <option value="Pending">Pending</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Cancelled">Cancelled</option>
+              <option value="Rescheduled">Rescheduled</option>
+            </select>
+          </div>
 
-      {/* Table */}
-      <div className="bg-white rounded shadow p-4">
-        <table className="w-full table-auto">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 text-left">Patient</th>
-              <th className="p-2 text-left">Doctor</th>
-              <th className="p-2 text-left">Date</th>
-              <th className="p-2 text-left">Time</th>
-              <th className="p-2 text-left">Status</th>
-              <th className="p-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="p-4 text-center text-gray-500">
-                  No appointments
-                </td>
-              </tr>
-            ) : (
-              appointments.map((appt) => (
-                <tr key={appt._id} className="border-t">
-                  <td className="p-2">{appt.patientId?.name || "—"}</td>
-                  <td className="p-2">{appt.doctorId?.name || "—"}</td>
-                  <td className="p-2">
-                    {new Date(appt.date).toLocaleDateString()}
-                  </td>
-                  <td className="p-2">
-                    {appt.startTime} - {appt.endTime}
-                  </td>
-                  <td className="p-2">{appt.status}</td>
-                  <td className="p-2 flex gap-2">
-                    <button
-                      onClick={() => handleAction(appt._id, "Confirmed")}
-                      className="bg-blue-600 text-white px-2 py-1 rounded"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleAction(appt._id, "Cancelled")}
-                      className="bg-red-500 text-white px-2 py-1 rounded"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => openReschedule(appt)}
-                      className="bg-yellow-400 px-2 py-1 rounded"
-                    >
-                      Reschedule
-                    </button>
-                    <button
-                      onClick={() => handleDelete(appt._id)}
-                      className="bg-gray-300 px-2 py-1 rounded"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Reschedule Modal */}
-      {editingAppt && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded w-full max-w-md">
-            <h3 className="text-lg font-bold mb-3">Reschedule</h3>
-            <div className="mb-2">
-              <label className="block text-sm">New Date</label>
-              <DatePicker
-                selected={newDate}
-                onChange={(d) => setNewDate(d)}
-                className="border p-2 rounded"
-              />
-            </div>
-            <div className="mb-2">
-              <label className="block text-sm">Start Time</label>
-              <input
-                type="time"
-                value={newStart}
-                onChange={(e) => setNewStart(e.target.value)}
-                className="border p-2 rounded w-full"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm">End Time</label>
-              <input
-                type="time"
-                value={newEnd}
-                onChange={(e) => setNewEnd(e.target.value)}
-                className="border p-2 rounded w-full"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setEditingAppt(null)}
-                className="bg-gray-200 px-3 py-2 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitReschedule}
-                className="bg-blue-600 text-white px-3 py-2 rounded"
-              >
-                Save
-              </button>
-            </div>
+          <div className="flex gap-2">
+            <button
+              onClick={applyFilter}
+              className="bg-green-600 text-white px-3 py-2 rounded"
+            >
+              Apply
+            </button>
+            <button
+              onClick={clearFilter}
+              className="bg-gray-200 px-3 py-2 rounded"
+            >
+              Clear
+            </button>
           </div>
         </div>
-      )}
+
+        {/* Table */}
+        <div className="bg-white rounded shadow p-4 overflow-x-auto">
+          <table className="w-full table-auto">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left">Patient</th>
+                <th className="p-2 text-left">Doctor</th>
+                <th className="p-2 text-left">Date</th>
+                <th className="p-2 text-left">Time</th>
+                <th className="p-2 text-left">Status</th>
+                <th className="p-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {appointments.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="p-4 text-center text-gray-500">
+                    No appointments
+                  </td>
+                </tr>
+              ) : (
+                appointments.map((appt) => (
+                  <tr key={appt._id} className="border-t hover:bg-gray-50">
+                    <td className="p-2">{appt.patientId?.name || "—"}</td>
+                    <td className="p-2">{appt.doctorId?.name || "—"}</td>
+                    <td className="p-2">
+                      {new Date(appt.date).toLocaleDateString()}
+                    </td>
+                    <td className="p-2">
+                      {appt.startTime} - {appt.endTime}
+                    </td>
+                    <td className="p-2">{appt.status}</td>
+                    <td className="p-2 flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleAction(appt._id, "Confirmed")}
+                        className="bg-blue-600 text-white px-2 py-1 rounded"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleAction(appt._id, "Cancelled")}
+                        className="bg-red-500 text-white px-2 py-1 rounded"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => openReschedule(appt)}
+                        className="bg-yellow-400 px-2 py-1 rounded"
+                      >
+                        Reschedule
+                      </button>
+                      <button
+                        onClick={() => handleDelete(appt._id)}
+                        className="bg-gray-300 px-2 py-1 rounded"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Reschedule Modal */}
+        {editingAppt && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded w-full max-w-md">
+              <h3 className="text-lg font-bold mb-3">Reschedule</h3>
+              <div className="mb-2">
+                <label className="block text-sm">New Date</label>
+                <DatePicker
+                  selected={newDate}
+                  onChange={(d) => setNewDate(d)}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+              <div className="mb-2">
+                <label className="block text-sm">Start Time</label>
+                <input
+                  type="time"
+                  value={newStart}
+                  onChange={(e) => setNewStart(e.target.value)}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm">End Time</label>
+                <input
+                  type="time"
+                  value={newEnd}
+                  onChange={(e) => setNewEnd(e.target.value)}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setEditingAppt(null)}
+                  className="bg-gray-200 px-3 py-2 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitReschedule}
+                  className="bg-blue-600 text-white px-3 py-2 rounded"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
