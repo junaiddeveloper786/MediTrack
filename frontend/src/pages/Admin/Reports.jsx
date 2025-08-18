@@ -1,10 +1,8 @@
-// pages/admin/Reports.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { toast } from "react-toastify";
-import AdminSidebar from "../../components/AdminSidebar";
 
 export default function Reports() {
   const [reportType, setReportType] = useState("appointments");
@@ -32,10 +30,7 @@ export default function Reports() {
 
       const { data } = await axios.get(
         `http://localhost:5000/api/reports/${reportType}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params,
-        }
+        { headers: { Authorization: `Bearer ${token}` }, params }
       );
 
       setReportData(data.data || []);
@@ -52,75 +47,104 @@ export default function Reports() {
     fetchReports();
   }, [reportType, search, startDate, endDate, status]);
 
+  const clean = (v) => (v == null ? "" : String(v));
+  const csvEscape = (v) => {
+    const s = clean(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${String(d.getDate()).padStart(2, "0")}/${String(
+      d.getMonth() + 1
+    ).padStart(2, "0")}/${d.getFullYear()}`;
   };
-
-  const formatTime = (start, end) => {
-    if (!start || !end) return "";
-    const format = (timeStr) => {
-      const [h, m] = timeStr.split(":");
-      const date = new Date();
-      date.setHours(h, m);
-      let hours = date.getHours();
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      const ampm = hours >= 12 ? "PM" : "AM";
-      hours = hours % 12 || 12;
-      return `${hours}:${minutes} ${ampm}`;
-    };
-    return `${format(start)} - ${format(end)}`;
+  const formatTime = (timeStr) => {
+    if (!timeStr) return "";
+    const d = new Date(timeStr);
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(
+      2,
+      "0"
+    )} ${ampm}`;
   };
-
+  const getWeekday = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", { weekday: "long" });
+  };
   const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
   const generateTableData = () => {
-    if (!reportData.length) return { headers: [], rows: [] };
+    let headers = [],
+      rows = [];
 
-    // dynamic headers
-    let headers = Object.keys(reportData[0]).map(capitalize);
+    switch (reportType) {
+      case "appointments":
+        headers = [
+          "ID",
+          "Doctor",
+          "Specialty",
+          "Patient",
+          "Date",
+          "Day",
+          "Status",
+          "Time",
+        ];
+        rows = reportData.map((r) => [
+          r.id || "",
+          r.doctor || "",
+          r.specialty || "",
+          r.patient || "",
+          r.date || formatDate(r.date),
+          r.day || getWeekday(r.date),
+          r.status || "",
+          `${formatTime(r.starttime)} - ${formatTime(r.endtime)}`,
+        ]);
+        break;
 
-    // rows
-    let rows = reportData.map((r) =>
-      Object.entries(r).map(([key, value]) => {
-        if (key === "date" || key === "createdAt") return formatDate(value);
-        if (key === "startTime" || key === "endTime") return value;
-        return value;
-      })
-    );
+      case "patients":
+        headers = ["ID", "Name", "Email", "Phone", "Created At"];
+        rows = reportData.map((r) => [
+          r.id || "",
+          r.name || "",
+          r.email || "",
+          r.phone || "",
+          r.createdat || formatDate(r.createdat),
+        ]);
+        break;
 
-    // handle Day and Time columns
-    if (reportType === "appointments" || reportType === "slots") {
-      rows = rows.map((r, idx) => {
-        const row = [...r];
-        const dataRow = reportData[idx];
+      case "doctors":
+        headers = ["ID", "Name", "Email", "Specialty", "Created At"];
+        rows = reportData.map((r) => [
+          r.id || "",
+          r.name || "",
+          r.email || "",
+          r.specialty || "",
+          r.createdat || formatDate(r.createdat),
+        ]);
+        break;
 
-        const dateIndex = headers.findIndex((h) => h.toLowerCase() === "date");
-        const dayIndex = headers.findIndex((h) => h.toLowerCase() === "day");
-        const timeIndex = headers.findIndex((h) => h.toLowerCase() === "time");
-        const start = dataRow.startTime;
-        const end = dataRow.endTime;
+      case "slots":
+        headers = ["ID", "Doctor", "Specialty", "Date", "Day", "Time"];
+        rows = reportData.map((r) => [
+          r.id || "",
+          r.doctor || "",
+          r.specialty || "",
+          r.date || formatDate(r.date),
+          r.day || getWeekday(r.date),
+          `${formatTime(r.starttime)} - ${formatTime(r.endtime)}`,
+        ]);
+        break;
 
-        if (dayIndex >= 0)
-          row[dayIndex] = new Date(dataRow.date).toLocaleDateString("en-US", {
-            weekday: "long",
-          });
-        if (timeIndex >= 0) row[timeIndex] = formatTime(start, end);
-
-        return row;
-      });
+      default:
+        break;
     }
 
     return { headers, rows };
-  };
-
-  const csvEscape = (v) => {
-    const s = v == null ? "" : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
 
   const exportCSV = () => {
@@ -129,7 +153,6 @@ export default function Reports() {
     const csvContent =
       "data:text/csv;charset=utf-8," +
       [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
-
     const link = document.createElement("a");
     link.href = encodeURI(csvContent);
     link.download = `${reportType}.csv`;
@@ -141,7 +164,6 @@ export default function Reports() {
   const exportPDF = () => {
     if (!reportData.length) return;
     const { headers, rows } = generateTableData();
-
     const doc = new jsPDF({
       orientation: "landscape",
       unit: "pt",
@@ -149,42 +171,52 @@ export default function Reports() {
     });
     doc.setFontSize(16);
     doc.text(`MediTrack — ${capitalize(reportType)} Reports`, 40, 40);
-    doc.setFontSize(10);
-
     const filterLine = `Filters: ${
       startDate ? `From ${formatDate(startDate)}` : "All Dates"
     } ${endDate ? `to ${formatDate(endDate)}` : ""} ${
       reportType === "appointments" ? `| Status: ${status}` : ""
     } ${search ? `| Search: ${search}` : ""}`;
+    doc.setFontSize(10);
     doc.text(filterLine, 40, 60);
-
-    doc.autoTable({
-      head: [headers],
-      body: rows,
-      startY: 80,
-      styles: { fontSize: 9, cellPadding: 6 },
-      headStyles: { fillColor: [37, 99, 235] },
-      margin: { left: 40, right: 40 },
+    import("jspdf-autotable").then(() => {
+      doc.autoTable({
+        head: [headers],
+        body: rows,
+        startY: 80,
+        styles: { fontSize: 9, cellPadding: 6 },
+        headStyles: { fillColor: [37, 99, 235] },
+        margin: { left: 40, right: 40 },
+        didDrawPage: (data) => {
+          const pageCount = doc.getNumberOfPages();
+          const pageWidth = doc.internal.pageSize.getWidth();
+          doc.setFontSize(9);
+          doc.text(
+            `Page ${data.pageNumber} of ${pageCount}`,
+            pageWidth - 80,
+            doc.internal.pageSize.getHeight() - 20
+          );
+        },
+      });
+      doc.save(`${reportType}.pdf`);
     });
-
-    doc.save(`${reportType}.pdf`);
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
-      <AdminSidebar />
-      <main className="flex-1 p-6">
-        <h2 className="text-2xl font-bold mb-4">Reports</h2>
+    <div className="p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen font-sans">
+      <h2 className="text-2xl font-bold mb-6 text-center md:text-left">
+        Reports
+      </h2>
 
-        {/* Report Type */}
-        <div className="flex flex-wrap items-center gap-4 mb-4">
+      {/* Report Type & Filters */}
+      <div className="flex flex-wrap items-end gap-4 mb-6">
+        <div>
           <label className="block text-sm font-medium text-gray-700">
             Report Type
           </label>
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value)}
-            className="border px-3 py-2 rounded"
+            className="mt-1 border rounded-lg px-3 py-2 w-48"
           >
             <option value="appointments">Appointments</option>
             <option value="patients">Patients</option>
@@ -193,72 +225,73 @@ export default function Reports() {
           </select>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          {(reportType === "appointments" || reportType === "slots") && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="mt-1 block w-48 border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="mt-1 block w-48 border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-            </>
-          )}
-
-          {reportType === "appointments" && (
+        {(reportType === "appointments" || reportType === "slots") && (
+          <>
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Status
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="mt-1 block w-48 border border-gray-300 rounded-lg px-3 py-2"
-              >
-                <option>All</option>
-                <option>Pending</option>
-                <option>Completed</option>
-                <option>Cancelled</option>
-              </select>
-            </div>
-          )}
-
-          {(reportType === "patients" || reportType === "doctors") && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Search
+                Start Date
               </label>
               <input
-                type="text"
-                placeholder={
-                  reportType === "doctors"
-                    ? "Name / Email / Phone / Specialty"
-                    : "Name / Email / Phone"
-                }
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="mt-1 border rounded-lg px-3 py-2 w-full max-w-2xl"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="mt-1 block border rounded-lg px-3 py-2 w-48"
               />
             </div>
-          )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="mt-1 block border rounded-lg px-3 py-2 w-48"
+              />
+            </div>
+          </>
+        )}
 
+        {reportType === "appointments" && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Status
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="mt-1 block w-48 border rounded-lg px-3 py-2"
+            >
+              <option>All</option>
+              <option>Pending</option>
+              <option>Confirmed</option>
+              <option>Completed</option>
+              <option>Cancelled</option>
+              <option>Rescheduled</option>
+            </select>
+          </div>
+        )}
+
+        {(reportType === "doctors" || reportType === "patients") && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Search
+            </label>
+            <input
+              type="text"
+              placeholder={
+                reportType === "doctors"
+                  ? "Name / Email / Phone / Specialization"
+                  : "Name / Email / Phone"
+              }
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="mt-1 border rounded-lg px-3 py-2 w-64"
+            />
+          </div>
+        )}
+
+        <div className="flex gap-3 flex-wrap">
           <button
             onClick={fetchReports}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow"
@@ -277,49 +310,62 @@ export default function Reports() {
           >
             Export PDF
           </button>
+          {/* New Clear Button */}
+          <button
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+              setStatus("All");
+              setSearch("");
+              setReportType("appointments");
+            }}
+            className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg shadow"
+          >
+            Clear
+          </button>
         </div>
+      </div>
 
-        {/* Table */}
-        {loading ? (
-          <p>Loading reports...</p>
-        ) : (
-          <div className="overflow-x-auto bg-white shadow rounded-lg">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-100 border-b">
+      {/* Table */}
+      {loading ? (
+        <p>Loading reports...</p>
+      ) : (
+        <div className="overflow-x-auto bg-white shadow rounded-lg">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-100 border-b">
+              <tr>
+                {generateTableData().headers.map((h) => (
+                  <th key={h} className="px-6 py-3 text-left">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {reportData.length === 0 ? (
                 <tr>
-                  {generateTableData().headers.map((h) => (
-                    <th key={h} className="px-6 py-3 text-left">
-                      {h}
-                    </th>
-                  ))}
+                  <td
+                    colSpan={generateTableData().headers.length}
+                    className="px-6 py-6 text-center text-gray-500"
+                  >
+                    No data for selected filters.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {reportData.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={generateTableData().headers.length}
-                      className="px-6 py-6 text-center text-gray-500"
-                    >
-                      No data for selected filters.
-                    </td>
+              ) : (
+                generateTableData().rows.map((row, idx) => (
+                  <tr key={idx} className="border-b hover:bg-gray-50">
+                    {row.map((v, i) => (
+                      <td key={i} className="px-6 py-3">
+                        {v}
+                      </td>
+                    ))}
                   </tr>
-                ) : (
-                  generateTableData().rows.map((row, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
-                      {row.map((v, i) => (
-                        <td key={i} className="px-6 py-3">
-                          {v}
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </main>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

@@ -28,7 +28,12 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F6FAFF]">
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{
+        background: "linear-gradient(to bottom right, #f5faff, #eaf3ff)",
+      }}
+    >
       <div className="bg-white shadow-md rounded-lg p-10 w-[400px]">
         <div className="flex flex-col items-center mb-6">
           <div className="flex items-center space-x-2">

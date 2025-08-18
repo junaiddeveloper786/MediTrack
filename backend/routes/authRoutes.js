@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
-router.get("/profile", protect, getProfile); // protected route
+router.get("/profile", protect, getProfile);
 
 // Example admin-only route
 router.get("/admin-dashboard", protect, admin, (req, res) => {

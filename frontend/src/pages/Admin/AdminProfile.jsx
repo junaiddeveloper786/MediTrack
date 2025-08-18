@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import AdminSidebar from "../../components/AdminSidebar";
 
 export default function AdminProfile() {
   const [profile, setProfile] = useState({
@@ -82,9 +81,7 @@ export default function AdminProfile() {
         email: formData.email,
         phone: formData.phone,
       };
-      if (formData.password) {
-        payload.password = formData.password;
-      }
+      if (formData.password) payload.password = formData.password;
 
       await axios.put("http://localhost:5000/api/admin/profile", payload, {
         headers: { Authorization: `Bearer ${token}` },
@@ -106,16 +103,21 @@ export default function AdminProfile() {
     }
   };
 
-  if (loading) return <div>Loading profile...</div>;
+  if (loading)
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        Loading profile...
+      </div>
+    );
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
-      <AdminSidebar />
+    <div className="p-4 md:p-8 bg-gray-50 min-h-screen flex justify-center">
+      <div className="w-full max-w-lg">
+        <h1 className="text-2xl font-semibold mb-6 text-center md:text-left">
+          Admin Profile
+        </h1>
 
-      <main className="flex-1 p-6 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-semibold mb-6">Admin Profile</h1>
-
-        <div className="bg-white p-6 rounded shadow space-y-4 max-w-md">
+        <div className="bg-white p-6 rounded shadow space-y-4">
           <div>
             <strong>Name:</strong> {profile.name}
           </div>
@@ -128,9 +130,10 @@ export default function AdminProfile() {
           <div>
             <strong>Role:</strong> {profile.role}
           </div>
+
           <button
             onClick={openEditModal}
-            className="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+            className="mt-4 w-full md:w-auto bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
           >
             Edit Profile
           </button>
@@ -138,7 +141,7 @@ export default function AdminProfile() {
 
         {/* Edit Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 w-full max-w-md relative shadow-lg">
               <button
                 onClick={() => setShowEditModal(false)}
@@ -196,7 +199,7 @@ export default function AdminProfile() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

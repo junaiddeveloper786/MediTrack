@@ -4,7 +4,6 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import AdminSidebar from "../../components/AdminSidebar";
 
 export default function AdminSlots() {
   const [doctors, setDoctors] = useState([]);
@@ -12,7 +11,6 @@ export default function AdminSlots() {
   const [editingSlotId, setEditingSlotId] = useState(null);
   const [editSlotDate, setEditSlotDate] = useState("");
 
-  // form fields
   const [doctorId, setDoctorId] = useState("");
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
@@ -20,16 +18,13 @@ export default function AdminSlots() {
   const [endTime, setEndTime] = useState("");
   const [slotDuration, setSlotDuration] = useState(15);
 
-  // edit slot
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
 
-  // filter fields
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterFrom, setFilterFrom] = useState(null);
   const [filterTo, setFilterTo] = useState(null);
 
-  // pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -41,9 +36,9 @@ export default function AdminSlots() {
   const fetchDoctors = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/doctors");
-      setDoctors(res.data || res.data.doctors || []);
+      setDoctors(res.data?.doctors || []);
     } catch (err) {
-      console.error("fetchDoctors error:", err);
+      console.error(err);
       toast.error("Failed to fetch doctors");
     }
   };
@@ -57,19 +52,17 @@ export default function AdminSlots() {
         params.append("fromDate", opts.fromDate.toISOString());
         params.append("toDate", opts.toDate.toISOString());
       }
-      const query = params.toString();
-      if (query) url += `?${query}`;
+      if (params.toString()) url += `?${params.toString()}`;
 
       const res = await axios.get(url);
-      setSlots(res.data.slots || []);
+      setSlots(res.data?.slots || []);
       setCurrentPage(1);
     } catch (err) {
-      console.error("fetchSlots error:", err);
+      console.error(err);
       toast.error("Failed to fetch slots");
     }
   };
 
-  // create slots in range
   const handleCreate = async (e) => {
     e.preventDefault();
     if (
@@ -79,9 +72,9 @@ export default function AdminSlots() {
       !startTime ||
       !endTime ||
       !slotDuration
-    ) {
+    )
       return toast.error("All fields are required");
-    }
+
     try {
       const body = {
         doctorId,
@@ -91,8 +84,6 @@ export default function AdminSlots() {
         endTime,
         slotDuration,
       };
-      console.log("Sending body:", body); // Debug log
-
       const res = await axios.post("http://localhost:5000/api/slots", body);
       if (res.data.success) {
         toast.success("Slots created");
@@ -101,7 +92,6 @@ export default function AdminSlots() {
           fromDate: filterFrom,
           toDate: filterTo,
         });
-        // reset form
         setDoctorId("");
         setFromDate(null);
         setToDate(null);
@@ -112,12 +102,11 @@ export default function AdminSlots() {
         toast.info(res.data.message || "No slots created");
       }
     } catch (err) {
-      console.error("create error:", err.response?.data || err.message);
+      console.error(err);
       toast.error(err.response?.data?.message || "Failed to create slots");
     }
   };
 
-  // delete slot
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this slot?")) return;
     try {
@@ -129,27 +118,25 @@ export default function AdminSlots() {
         toDate: filterTo,
       });
     } catch (err) {
-      console.error("delete error:", err);
+      console.error(err);
       toast.error("Failed to delete");
     }
   };
 
-  // update slot
   const handleUpdate = async (id, slotDate) => {
-    if (!editStartTime || !editEndTime) {
-      toast.error("Start time and End time are required");
-      return;
-    }
+    if (!editStartTime || !editEndTime)
+      return toast.error("Start and End times required");
 
     try {
-      // Combine date + time before sending to backend
-      const startDateTime = new Date(`${slotDate}T${editStartTime}`);
-      const endDateTime = new Date(`${slotDate}T${editEndTime}`);
+      const [year, month, day] = slotDate.split("-").map(Number);
+      const [sh, sm] = editStartTime.split(":").map(Number);
+      const [eh, em] = editEndTime.split(":").map(Number);
 
-      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-        toast.error("Invalid date/time");
-        return;
-      }
+      const startDateTime = new Date(year, month - 1, day, sh, sm);
+      const endDateTime = new Date(year, month - 1, day, eh, em);
+
+      if (isNaN(startDateTime) || isNaN(endDateTime))
+        return toast.error("Invalid date/time");
 
       const res = await axios.put(`http://localhost:5000/api/slots/${id}`, {
         startTime: startDateTime.toISOString(),
@@ -157,7 +144,7 @@ export default function AdminSlots() {
       });
 
       if (res.data.success) {
-        toast.success("Slot updated successfully");
+        toast.success("Slot updated");
         setEditingSlotId(null);
         fetchSlots({
           doctorId: filterDoctor || undefined,
@@ -168,12 +155,11 @@ export default function AdminSlots() {
         toast.error(res.data.message || "Failed to update slot");
       }
     } catch (err) {
-      console.error("update error:", err);
+      console.error(err);
       toast.error(err.response?.data?.message || "Failed to update slot");
     }
   };
 
-  // apply filter
   const applyFilter = () => {
     fetchSlots({
       doctorId: filterDoctor || undefined,
@@ -182,369 +168,302 @@ export default function AdminSlots() {
     });
   };
 
-  // Pagination logic
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentSlots = slots.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(slots.length / itemsPerPage);
 
-  const handlePageChange = (pageNumber) => {
-    if (pageNumber < 1 || pageNumber > totalPages) return;
-    setCurrentPage(pageNumber);
-  };
-
   return (
-    <div className="flex min-h-screen font-sans bg-[#f3f6fc]">
-      {/* Sidebar */}
-      <AdminSidebar />
+    <div className="p-4 md:p-6 w-full">
+      <h2 className="text-2xl font-bold mb-4">Doctor Slot Management</h2>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6">
-        <h2 className="text-2xl font-bold mb-4">Doctor Slot Management</h2>
-
-        {/* Create Form */}
-        <form
-          onSubmit={handleCreate}
-          className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-6 bg-white p-6 rounded shadow"
-        >
-          <div className="md:col-span-1">
-            <label className="text-sm font-medium mb-1 block">Doctor</label>
-            <select
-              value={doctorId}
-              onChange={(e) => setDoctorId(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded"
-            >
-              <option value="">Select doctor</option>
-              {doctors.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-sm font-medium mb-1 block">From Date</label>
-            <DatePicker
-              selected={fromDate}
-              onChange={(d) => setFromDate(d)}
-              selectsStart
-              startDate={fromDate}
-              endDate={toDate}
-              className="w-full border border-gray-300 p-2 rounded"
-            />
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-sm font-medium mb-1 block">To Date</label>
-            <DatePicker
-              selected={toDate}
-              onChange={(d) => setToDate(d)}
-              selectsEnd
-              startDate={fromDate}
-              endDate={toDate}
-              minDate={fromDate}
-              className="w-full border border-gray-300 p-2 rounded"
-            />
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-sm font-medium mb-1 block">Start Time</label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded"
-            />
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-sm font-medium mb-1 block">End Time</label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded"
-            />
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-sm font-medium mb-1 block">
-              Slot Duration (minutes)
-            </label>
-            <input
-              type="number"
-              min={5}
-              max={180}
-              value={slotDuration}
-              onChange={(e) => setSlotDuration(Number(e.target.value))}
-              className="w-full border border-gray-300 p-2 rounded"
-            />
-          </div>
-
-          <div className="md:col-span-6 flex gap-3 mt-4">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
-            >
-              Create Slots
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDoctorId("");
-                setFromDate(null);
-                setToDate(null);
-                setStartTime("");
-                setEndTime("");
-                setSlotDuration(30);
-              }}
-              className="bg-gray-300 px-6 py-2 rounded hover:bg-gray-400 transition"
-            >
-              Reset
-            </button>
-          </div>
-        </form>
-
-        {/* Filters */}
-        <div className="flex gap-3 items-end mb-4">
-          <div>
-            <label className="text-sm block mb-1">Filter Doctor</label>
-            <select
-              value={filterDoctor}
-              onChange={(e) => setFilterDoctor(e.target.value)}
-              className="border p-2 rounded"
-            >
-              <option value="">All doctors</option>
-              {doctors.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-sm block mb-1">From</label>
-            <DatePicker
-              selected={filterFrom}
-              onChange={(d) => setFilterFrom(d)}
-              className="border p-2 rounded"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm block mb-1">To</label>
-            <DatePicker
-              selected={filterTo}
-              onChange={(d) => setFilterTo(d)}
-              className="border p-2 rounded"
-              minDate={filterFrom}
-            />
-          </div>
-
-          <div>
-            <button
-              onClick={applyFilter}
-              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
-            >
-              Apply
-            </button>
-            <button
-              onClick={() => {
-                setFilterDoctor("");
-                setFilterFrom(null);
-                setFilterTo(null);
-                fetchSlots();
-              }}
-              className="ml-2 bg-gray-300 px-6 py-2 rounded hover:bg-gray-400 transition"
-            >
-              Clear
-            </button>
-          </div>
+      {/* Create Form */}
+      <form
+        onSubmit={handleCreate}
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-end mb-6 bg-white p-4 sm:p-6 rounded shadow"
+      >
+        <div className="col-span-1">
+          <label className="text-sm font-medium mb-1 block">Doctor</label>
+          <select
+            value={doctorId}
+            onChange={(e) => setDoctorId(e.target.value)}
+            className="w-full border p-2 rounded"
+          >
+            <option value="">Select doctor</option>
+            {doctors.map((d) => (
+              <option key={d._id} value={d._id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="col-span-1">
+          <label className="text-sm font-medium mb-1 block">From Date</label>
+          <DatePicker
+            selected={fromDate}
+            onChange={setFromDate}
+            selectsStart
+            startDate={fromDate}
+            endDate={toDate}
+            className="w-full border p-2 rounded"
+          />
+        </div>
+        <div className="col-span-1">
+          <label className="text-sm font-medium mb-1 block">To Date</label>
+          <DatePicker
+            selected={toDate}
+            onChange={setToDate}
+            selectsEnd
+            startDate={fromDate}
+            endDate={toDate}
+            minDate={fromDate}
+            className="w-full border p-2 rounded"
+          />
+        </div>
+        <div className="col-span-1">
+          <label className="text-sm font-medium mb-1 block">Start Time</label>
+          <input
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            className="w-full border p-2 rounded"
+          />
+        </div>
+        <div className="col-span-1">
+          <label className="text-sm font-medium mb-1 block">End Time</label>
+          <input
+            type="time"
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+            className="w-full border p-2 rounded"
+          />
+        </div>
+        <div className="col-span-1">
+          <label className="text-sm font-medium mb-1 block">
+            Slot Duration
+          </label>
+          <input
+            type="number"
+            min={5}
+            max={180}
+            value={slotDuration}
+            onChange={(e) => setSlotDuration(Number(e.target.value))}
+            className="w-full border p-2 rounded"
+          />
         </div>
 
-        {/* Slots Table */}
-        <div className="bg-white rounded shadow p-4">
-          <h3 className="text-lg font-semibold mb-3">Available Slots</h3>
-          <table className="w-full table-auto">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 text-left">Doctor</th>
-                <th className="p-2 text-left">Day</th>
-                <th className="p-2 text-left">Date</th>
-                <th className="p-2 text-left">Time</th>
-                <th className="p-2 text-left">Action</th>
+        <div className="col-span-1 sm:col-span-2 md:col-span-6 flex flex-col sm:flex-row gap-2 mt-4">
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
+          >
+            Create Slots
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDoctorId("");
+              setFromDate(null);
+              setToDate(null);
+              setStartTime("");
+              setEndTime("");
+              setSlotDuration(30);
+            }}
+            className="bg-gray-300 px-6 py-2 rounded hover:bg-gray-400 transition"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row sm:items-end gap-3 mb-4 flex-wrap">
+        <div>
+          <label className="text-sm block mb-1">Filter Doctor</label>
+          <select
+            value={filterDoctor}
+            onChange={(e) => setFilterDoctor(e.target.value)}
+            className="border p-2 rounded"
+          >
+            <option value="">All doctors</option>
+            {doctors.map((d) => (
+              <option key={d._id} value={d._id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-sm block mb-1">From</label>
+          <DatePicker
+            selected={filterFrom}
+            onChange={setFilterFrom}
+            className="border p-2 rounded"
+          />
+        </div>
+        <div>
+          <label className="text-sm block mb-1">To</label>
+          <DatePicker
+            selected={filterTo}
+            onChange={setFilterTo}
+            minDate={filterFrom}
+            className="border p-2 rounded"
+          />
+        </div>
+        <div className="flex gap-2 mt-2 sm:mt-0">
+          <button
+            onClick={applyFilter}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+          >
+            Apply
+          </button>
+          <button
+            onClick={() => {
+              setFilterDoctor("");
+              setFilterFrom(null);
+              setFilterTo(null);
+              fetchSlots();
+            }}
+            className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 transition"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      {/* Slots Table */}
+      <div className="overflow-x-auto bg-white rounded shadow p-4">
+        <table className="w-full table-auto text-sm sm:text-base">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="p-2 text-left">Doctor</th>
+              <th className="p-2 text-left">Specialty</th> {/* New Column */}
+              <th className="p-2 text-left">Day</th>
+              <th className="p-2 text-left">Date</th>
+              <th className="p-2 text-left">Time</th>
+              <th className="p-2 text-left">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentSlots.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="p-4 text-center text-gray-500">
+                  No slots found
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {currentSlots.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="p-4 text-center text-gray-500">
-                    No slots found
+            ) : (
+              currentSlots.map((slot) => (
+                <tr key={slot._id} className="border-t">
+                  {/* Doctor */}
+                  <td className="p-2 align-middle">
+                    {slot.doctorId?.name || "N/A"}
+                  </td>
+
+                  {/* Specialty */}
+                  <td className="p-2 align-middle">
+                    {slot.doctorId?.specialty || "N/A"}
+                  </td>
+
+                  {/* Day */}
+                  <td className="p-2 align-middle">{slot.day}</td>
+
+                  {/* Date */}
+                  <td className="p-2 align-middle">
+                    {new Date(slot.date).toLocaleDateString("en-GB")}
+                  </td>
+
+                  {/* Time */}
+                  <td className="p-2 align-middle">
+                    {editingSlotId === slot._id ? (
+                      <div className="flex gap-1">
+                        <input
+                          type="time"
+                          value={editStartTime}
+                          onChange={(e) => setEditStartTime(e.target.value)}
+                          className="border p-1 rounded"
+                        />
+                        <input
+                          type="time"
+                          value={editEndTime}
+                          onChange={(e) => setEditEndTime(e.target.value)}
+                          className="border p-1 rounded"
+                        />
+                      </div>
+                    ) : (
+                      (() => {
+                        try {
+                          const start = new Date(slot.startTime);
+                          const end = new Date(slot.endTime);
+                          if (isNaN(start) || isNaN(end)) return "Invalid Time";
+                          return `${start.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })} - ${end.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}`;
+                        } catch {
+                          return "Invalid Time";
+                        }
+                      })()
+                    )}
+                  </td>
+
+                  {/* Action */}
+                  <td className="p-2 align-middle flex gap-2">
+                    {editingSlotId === slot._id ? (
+                      <>
+                        <button
+                          onClick={() => handleUpdate(slot._id, editSlotDate)}
+                          className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingSlotId(null)}
+                          className="bg-gray-300 text-black px-2 py-1 rounded hover:bg-gray-400 transition"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingSlotId(slot._id);
+                            setEditStartTime(
+                              new Date(slot.startTime)
+                                .toISOString()
+                                .slice(11, 16)
+                            );
+                            setEditEndTime(
+                              new Date(slot.endTime).toISOString().slice(11, 16)
+                            );
+                            setEditSlotDate(
+                              new Date(slot.date).toISOString().slice(0, 10)
+                            );
+                          }}
+                          className="bg-yellow-400 text-white px-2 py-1 rounded hover:bg-yellow-500 transition"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(slot._id)}
+                          className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
-              ) : (
-                currentSlots.map((slot) => (
-                  <tr key={slot._id} className="border-t">
-                    <td className="p-2">{slot.doctorId?.name || "N/A"}</td>
-                    <td className="p-2">{slot.day}</td>
-                    <td className="p-2">
-                      {new Date(slot.date).toLocaleDateString("en-GB")}
-                    </td>
-                    <td className="p-2">
-                      {editingSlotId === slot._id ? (
-                        <>
-                          <input
-                            type="time"
-                            value={editStartTime}
-                            onChange={(e) => setEditStartTime(e.target.value)}
-                            className="border p-1 rounded mr-2"
-                          />
-                          <input
-                            type="time"
-                            value={editEndTime}
-                            onChange={(e) => setEditEndTime(e.target.value)}
-                            className="border p-1 rounded"
-                          />
-                        </>
-                      ) : (
-                        <>
-                          {(() => {
-                            try {
-                              const startDateTime = new Date(slot.startTime);
-                              const endDateTime = new Date(slot.endTime);
-
-                              if (
-                                isNaN(startDateTime.getTime()) ||
-                                isNaN(endDateTime.getTime())
-                              ) {
-                                return "Invalid Time";
-                              }
-
-                              return (
-                                <>
-                                  {startDateTime.toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}{" "}
-                                  -{" "}
-                                  {endDateTime.toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </>
-                              );
-                            } catch {
-                              return "Invalid Time";
-                            }
-                          })()}
-                        </>
-                      )}
-                    </td>
-
-                    <td className="p-2 flex gap-2">
-                      {editingSlotId === slot._id ? (
-                        <>
-                          <button
-                            onClick={() => handleUpdate(slot._id, editSlotDate)}
-                            className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingSlotId(null)}
-                            className="bg-gray-300 text-black px-2 py-1 rounded hover:bg-gray-400 transition"
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => {
-                              setEditingSlotId(slot._id);
-                              setEditStartTime(
-                                new Date(slot.startTime)
-                                  .toISOString()
-                                  .slice(11, 16)
-                              );
-                              setEditEndTime(
-                                new Date(slot.endTime)
-                                  .toISOString()
-                                  .slice(11, 16)
-                              );
-                              setEditSlotDate(
-                                new Date(slot.date).toISOString().slice(0, 10)
-                              ); // "YYYY-MM-DD"
-                            }}
-                            className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(slot._id)}
-                            className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-4 space-x-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className={`px-3 py-1 rounded ${
-                  currentPage === 1
-                    ? "bg-gray-300 cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                Prev
-              </button>
-
-              {[...Array(totalPages)].map((_, idx) => {
-                const pageNum = idx + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => handlePageChange(pageNum)}
-                    className={`px-3 py-1 rounded ${
-                      currentPage === pageNum
-                        ? "bg-blue-800 text-white"
-                        : "bg-blue-600 text-white hover:bg-blue-700"
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded ${
-                  currentPage === totalPages
-                    ? "bg-gray-300 cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </div>
-      </main>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

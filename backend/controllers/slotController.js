@@ -1,7 +1,7 @@
 // controllers/slotController.js
 const Slot = require("../models/Slot");
 
-// ✅ Create slots in a date range
+// ✅ Create slots in a date range (corrected for local timezone)
 exports.createSlotsInRange = async (req, res) => {
   try {
     const { doctorId, startDate, endDate, startTime, endTime, slotDuration } =
@@ -25,15 +25,15 @@ exports.createSlotsInRange = async (req, res) => {
     let slots = [];
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      let currentDate = new Date(d); // daily fresh copy
+      let currentDate = new Date(d);
 
-      // Parse times as proper Date objects
-      let startTimeValue = `${
-        currentDate.toISOString().split("T")[0]
-      }T${startTime}`;
-      let endTimeValue = `${
-        currentDate.toISOString().split("T")[0]
-      }T${endTime}`;
+      // Local YYYY-MM-DD format
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+      const day = String(currentDate.getDate()).padStart(2, "0");
+
+      let startTimeValue = `${year}-${month}-${day}T${startTime}`;
+      let endTimeValue = `${year}-${month}-${day}T${endTime}`;
 
       let currentTime = new Date(startTimeValue);
       let endTimeDate = new Date(endTimeValue);
@@ -43,7 +43,7 @@ exports.createSlotsInRange = async (req, res) => {
 
         slots.push({
           doctorId,
-          date: new Date(currentDate),
+          date: new Date(year, currentDate.getMonth(), currentDate.getDate()), // local date
           startTime: new Date(currentTime),
           endTime: new Date(nextTime),
           day: currentDate.toLocaleString("en-US", { weekday: "long" }),
@@ -86,7 +86,6 @@ exports.getSlots = async (req, res) => {
       filter.date = { $gte: startOfDay, $lte: endOfDay };
     }
 
-    // Time filter (if provided)
     if (startTime && endTime) {
       const [startHour, startMinute] = startTime.split(":").map(Number);
       const [endHour, endMinute] = endTime.split(":").map(Number);
@@ -159,7 +158,6 @@ exports.getAvailableSlotsByDate = async (req, res) => {
       .populate("doctorId", "name")
       .sort({ startTime: 1 });
 
-    // Format slots with day & formatted date
     const formattedSlots = slots.map((slot) => {
       const slotDate = new Date(slot.date);
       return {
@@ -167,9 +165,9 @@ exports.getAvailableSlotsByDate = async (req, res) => {
         doctor: slot.doctorId,
         startTime: slot.startTime,
         endTime: slot.endTime,
-        date: slotDate.toISOString(), // full ISO date
+        date: slotDate.toISOString(),
         day: slotDate.toLocaleDateString("en-US", { weekday: "long" }),
-        formattedDate: slotDate.toLocaleDateString("en-GB"), // DD/MM/YYYY
+        formattedDate: slotDate.toLocaleDateString("en-GB"),
       };
     });
 
@@ -183,6 +181,7 @@ exports.getAvailableSlotsByDate = async (req, res) => {
     });
   }
 };
+
 // ✅ Update slot
 exports.updateSlot = async (req, res) => {
   try {

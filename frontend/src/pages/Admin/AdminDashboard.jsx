@@ -4,49 +4,52 @@ import axios from "axios";
 import { FaUserMd, FaUsers, FaCalendarAlt, FaChartLine } from "react-icons/fa";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import AdminSidebar from "../../components/AdminSidebar";
 
 function AdminDashboard() {
   const [stats, setStats] = useState({});
   const [recentAppointments, setRecentAppointments] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const token = localStorage.getItem("token");
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsRes, recentRes] = await Promise.all([
+        axios.get("http://localhost:5000/api/admin/dashboard/stats", {
+          headers,
+        }),
+        axios.get(
+          "http://localhost:5000/api/admin/dashboard/appointments/recent",
+          { headers }
+        ),
+      ]);
+
+      setStats(statsRes.data);
+      setRecentAppointments(recentRes.data);
+    } catch (err) {
+      console.error("Failed to load admin dashboard data", err);
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = { Authorization: `Bearer ${token}` };
-
-    const load = async () => {
-      try {
-        const statsRes = await axios.get(
-          "http://localhost:5000/api/admin/stats",
-          { headers }
-        );
-        const recentRes = await axios.get(
-          "http://localhost:5000/api/appointments/recent",
-          { headers }
-        );
-        setStats(statsRes.data);
-        setRecentAppointments(recentRes.data);
-      } catch (err) {
-        console.error("Failed to load admin dashboard data", err);
-      }
-    };
-    load();
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="flex min-h-screen font-sans bg-[#f3f6fc]">
-      {/* Sidebar */}
-      <AdminSidebar />
-
-      {/* Main Content */}
-      <main className="flex-1 p-8">
-        {/* Top Bar */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+    <div className="p-4 md:p-8 bg-[#f3f6fc] min-h-full">
+      <div className="flex flex-col gap-8">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+            Admin Dashboard
+          </h1>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <KPI
             color="bg-blue-500"
             icon={<FaUserMd />}
@@ -75,27 +78,35 @@ function AdminDashboard() {
 
         {/* Calendar + Recent Appointments */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Calendar Card */}
           <div className="bg-white shadow-lg rounded-xl p-5">
             <h3 className="text-lg font-semibold mb-4 text-gray-700">
               Appointments Overview
             </h3>
             <Calendar
-              className="w-full border-none rounded-lg shadow-sm"
-              tileClassName="p-2"
+              value={selectedDate}
+              onChange={setSelectedDate}
+              className="w-full border-none rounded-lg shadow-lg overflow-hidden"
+              tileClassName={({ date }) =>
+                date.toDateString() === selectedDate.toDateString()
+                  ? "bg-blue-500 text-white rounded-lg"
+                  : "hover:bg-blue-100 transition-colors duration-150 rounded-lg"
+              }
             />
           </div>
 
-          <div className="bg-white shadow-lg rounded-xl p-5">
+          {/* Recent Appointments Card */}
+          <div className="bg-white shadow-lg rounded-xl p-5 overflow-x-auto">
             <h3 className="text-lg font-semibold mb-4 text-gray-700">
               Recent Appointments
             </h3>
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-sm border-collapse min-w-[500px]">
               <thead className="text-gray-600 border-b">
                 <tr>
                   <th className="py-2 px-3 text-left">Patient</th>
                   <th className="px-3 text-left">Doctor</th>
                   <th className="px-3 text-left">Date</th>
-                  <th className="px-3 text-left">Time</th>
+                  <th className="px-3 text-left">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -103,20 +114,33 @@ function AdminDashboard() {
                   recentAppointments.map((a, i) => (
                     <tr
                       key={i}
-                      className={`border-t ${
+                      className={`border-t hover:bg-gray-50 transition-colors duration-150 ${
                         i % 2 === 0 ? "bg-gray-50" : "bg-white"
                       }`}
                     >
-                      <td className="py-2 px-3">{a.patient?.name}</td>
-                      <td className="px-3">{a.doctor?.name}</td>
-                      <td className="px-3">
-                        {new Date(a.slot).toLocaleDateString()}
+                      <td className="py-3 px-4">{a.patientName}</td>
+                      <td className="px-4">{a.doctorName}</td>
+                      <td className="px-4">
+                        {new Date(a.date).toLocaleDateString("en-GB")}
                       </td>
-                      <td className="px-3">
-                        {new Date(a.slot).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                      <td className="px-4">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            a.status === "Completed"
+                              ? "bg-green-100 text-green-700"
+                              : a.status === "Confirmed"
+                              ? "bg-blue-100 text-blue-700"
+                              : a.status === "Pending"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : a.status === "Cancelled"
+                              ? "bg-red-100 text-red-700"
+                              : a.status === "Rescheduled"
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {a.status}
+                        </span>
                       </td>
                     </tr>
                   ))
@@ -131,11 +155,12 @@ function AdminDashboard() {
             </table>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
 
+// KPI Card Component
 function KPI({ icon, label, value, color }) {
   return (
     <div

@@ -38,12 +38,20 @@ const sendEmail = async (to, subject, text) => {
 // Function to send SMS
 const sendSMS = async (to, message) => {
   try {
+    const from = process.env.TWILIO_PHONE_NUMBER.trim();
+    const formattedTo = to.startsWith("+") ? to : `+91${to}`;
+    console.log("📨 Sending SMS...");
+    console.log("FROM:", from);
+    console.log("TO:", formattedTo);
+    console.log("MESSAGE:", message);
+
     await client.messages.create({
       body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: `+91${to}`,
+      from,
+      to: formattedTo,
     });
-    console.log(`✅ SMS sent to ${to}`);
+
+    console.log(`✅ SMS sent to ${formattedTo}`);
   } catch (error) {
     console.error(`❌ Failed to send SMS to ${to}:`, error);
   }
@@ -116,16 +124,36 @@ exports.createAppointment = async (req, res) => {
   }
 };
 
-// 📌 Get All Appointments
+// 📌 Get All Appointments (Admin gets all, normal users get only their own)
 exports.getAppointments = async (req, res) => {
   try {
-    const { doctorId, patientId, status } = req.query;
+    const { doctorId, patientId, status, fromDate, toDate } = req.query;
     const filter = {};
 
-    if (doctorId) filter.doctorId = doctorId;
-    if (patientId) filter.patientId = patientId;
-    if (status) filter.status = status;
-    else filter.status = { $ne: "Cancelled" };
+    if (req.user.role === "admin") {
+      if (doctorId) filter.doctorId = doctorId;
+      if (patientId) filter.patientId = patientId;
+    } else {
+      filter.patientId = req.user._id;
+    }
+
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = { $ne: "Cancelled" };
+    }
+
+    // 📌 Date filter logic
+    if (fromDate && toDate) {
+      filter.date = {
+        $gte: new Date(fromDate),
+        $lte: new Date(toDate),
+      };
+    } else if (fromDate) {
+      filter.date = { $gte: new Date(fromDate) };
+    } else if (toDate) {
+      filter.date = { $lte: new Date(toDate) };
+    }
 
     const appointments = await Appointment.find(filter)
       .populate("patientId", "name email phone")
@@ -139,6 +167,51 @@ exports.getAppointments = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch appointments",
+      error: err.message,
+    });
+  }
+};
+
+// 📌 Confirm Appointment
+exports.confirmAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await Appointment.findById(id);
+    if (!appointment)
+      return res
+        .status(404)
+        .json({ success: false, message: "Appointment not found" });
+
+    appointment.status = "Confirmed";
+    await appointment.save();
+
+    const patient = await User.findById(appointment.patientId);
+    const doctor = await Doctor.findById(appointment.doctorId);
+
+    if (patient?.email) {
+      await sendEmail(
+        patient.email,
+        "Appointment Confirmed - MediTrack",
+        `Dear ${patient.name},\n\nYour appointment with Dr. ${doctor.name} on ${appointment.date} at ${appointment.startTime} has been confirmed.\n\nThank you,\nMediTrack Team`
+      );
+    }
+
+    if (patient?.phone) {
+      await sendSMS(
+        patient.phone,
+        `Hello ${patient.name}, your appointment with Dr. ${doctor.name} on ${appointment.date} at ${appointment.startTime} is confirmed.`
+      );
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "Appointment confirmed successfully" });
+  } catch (err) {
+    console.error("confirmAppointment error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to confirm appointment",
       error: err.message,
     });
   }
@@ -199,16 +272,23 @@ exports.rescheduleAppointment = async (req, res) => {
     const { id } = req.params;
     const { newSlotId, newDate, newStartTime, newEndTime } = req.body;
 
+    // Find appointment
     const appointment = await Appointment.findById(id);
     if (!appointment)
       return res
         .status(404)
         .json({ success: false, message: "Appointment not found" });
 
+    // Free old slot
     if (appointment.slotId) {
-      await Slot.findByIdAndUpdate(appointment.slotId, { isBooked: false });
+      try {
+        await Slot.findByIdAndUpdate(appointment.slotId, { isBooked: false });
+      } catch (err) {
+        console.warn("Failed to free old slot:", err.message);
+      }
     }
 
+    // Check new slot
     const newSlot = await Slot.findById(newSlotId);
     if (!newSlot)
       return res
@@ -219,31 +299,41 @@ exports.rescheduleAppointment = async (req, res) => {
         .status(400)
         .json({ success: false, message: "New slot already booked" });
 
+    // Update appointment
     appointment.slotId = newSlotId;
-    appointment.date = newDate;
+    appointment.date = new Date(newDate);
     appointment.startTime = newStartTime;
     appointment.endTime = newEndTime;
     appointment.status = "Rescheduled";
     await appointment.save();
 
+    // Mark new slot as booked
     await Slot.findByIdAndUpdate(newSlotId, { isBooked: true });
 
+    // Notify patient
     const patient = await User.findById(appointment.patientId);
     const doctor = await Doctor.findById(appointment.doctorId);
 
-    if (patient?.email) {
-      await sendEmail(
-        patient.email,
-        "Appointment Rescheduled - MediTrack",
-        `Dear ${patient.name},\n\nYour appointment with Dr. ${doctor.name} has been rescheduled.\nNew Date: ${newDate}\nNew Time: ${newStartTime} - ${newEndTime}\n\nThank you,\nMediTrack Team`
-      );
-    }
-
-    if (patient?.phone) {
-      await sendSMS(
-        patient.phone,
-        `Hello ${patient.name}, your appointment with Dr. ${doctor.name} has been rescheduled to ${newDate} at ${newStartTime}.`
-      );
+    try {
+      if (patient?.email) {
+        await sendEmail(
+          patient.email,
+          "Appointment Rescheduled - MediTrack",
+          `Dear ${patient.name},\n\nYour appointment with Dr. ${
+            doctor?.name || "Doctor"
+          } has been rescheduled.\nNew Date: ${appointment.date.toDateString()}\nNew Time: ${newStartTime} - ${newEndTime}\n\nThank you,\nMediTrack Team`
+        );
+      }
+      if (patient?.phone) {
+        await sendSMS(
+          patient.phone,
+          `Hello ${patient.name}, your appointment with Dr. ${
+            doctor?.name || "Doctor"
+          } has been rescheduled to ${appointment.date.toDateString()} at ${newStartTime}.`
+        );
+      }
+    } catch (notifyErr) {
+      console.warn("Notification failed:", notifyErr.message);
     }
 
     res.status(200).json({
@@ -261,33 +351,19 @@ exports.rescheduleAppointment = async (req, res) => {
   }
 };
 
-// 📌 Delete Appointment
-exports.deleteAppointment = async (req, res) => {
+// Complete appointment
+exports.completeAppointment = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const appointment = await Appointment.findById(id);
-    if (!appointment)
-      return res
-        .status(404)
-        .json({ success: false, message: "Appointment not found" });
-
-    if (appointment.slotId) {
-      await Slot.findByIdAndUpdate(appointment.slotId, { isBooked: false });
-    }
-
-    await Appointment.findByIdAndDelete(id);
-
-    res
-      .status(200)
-      .json({ success: true, message: "Appointment deleted successfully" });
+    const appointment = await Appointment.findByIdAndUpdate(
+      req.params.id,
+      { status: "Completed" },
+      { new: true }
+    );
+    res.status(200).json({ message: "Appointment Completed", appointment });
   } catch (err) {
-    console.error("deleteAppointment error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete appointment",
-      error: err.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Failed to complete appointment", error: err.message });
   }
 };
 

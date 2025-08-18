@@ -148,8 +148,11 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// Update logged-in patient profile with optional password update
+// Update logged-in patient profile
 exports.updateProfile = async (req, res) => {
+  console.log("Updating profile for:", req.user);
+  console.log("Request body:", req.body);
+
   try {
     const userId = req.user._id;
     const { name, email, phone, password } = req.body;
@@ -164,11 +167,12 @@ exports.updateProfile = async (req, res) => {
     }
 
     const updateData = { name, email, phone };
-
-    if (password) {
+    if (password && password.trim() !== "") {
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(password, salt);
     }
+
+    console.log("Updating with data:", updateData);
 
     const updatedUser = await User.findOneAndUpdate(
       { _id: userId, role: "user" },
@@ -176,21 +180,15 @@ exports.updateProfile = async (req, res) => {
       { new: true, runValidators: true }
     ).select("-password -__v");
 
+    console.log("Updated user:", updatedUser);
+
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "Profile updated", user: updatedUser });
+    res.json({ message: "Profile updated successfully", user: updatedUser });
   } catch (err) {
     console.error("updateProfile error:", err);
-
-    // Add more descriptive error output
-    if (err.name === "ValidationError") {
-      return res
-        .status(400)
-        .json({ message: "Validation error", errors: err.errors });
-    }
-
     res
       .status(500)
       .json({ message: "Failed to update profile", error: err.message });

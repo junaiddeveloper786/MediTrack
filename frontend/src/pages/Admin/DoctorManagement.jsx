@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { FaEdit, FaTrash, FaTimes } from "react-icons/fa";
 import axios from "axios";
 import { toast } from "react-toastify";
-import AdminSidebar from "../../components/AdminSidebar"; // adjust path if needed
 
 const DoctorManagement = () => {
   const [doctors, setDoctors] = useState([]);
@@ -27,7 +26,7 @@ const DoctorManagement = () => {
     try {
       const res = await axios.get("http://localhost:5000/api/doctors");
       setDoctors(res.data);
-      setCurrentPage(1); // reset page to 1 after fetch
+      setCurrentPage(1);
     } catch (err) {
       toast.error("Failed to fetch doctors");
     }
@@ -81,7 +80,6 @@ const DoctorManagement = () => {
     }
   };
 
-  // Filter doctors by search term (name, email, phone)
   const filteredDoctors = doctors.filter(
     (doc) =>
       (doc.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -89,7 +87,6 @@ const DoctorManagement = () => {
       (doc.phone || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Pagination Logic on filtered list
   const indexOfLastDoctor = currentPage * doctorsPerPage;
   const indexOfFirstDoctor = indexOfLastDoctor - doctorsPerPage;
   const currentDoctors = filteredDoctors.slice(
@@ -97,279 +94,218 @@ const DoctorManagement = () => {
     indexOfLastDoctor
   );
   const totalPages = Math.ceil(filteredDoctors.length / doctorsPerPage);
-
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
-    <div className="flex min-h-screen font-sans bg-[#f3f6fc]">
-      {/* Sidebar */}
-      <AdminSidebar />
+    <div className="p-4 sm:p-6 md:p-8 bg-[#f3f6fc] min-h-screen">
+      <h2 className="text-2xl font-bold mb-6 text-center md:text-left">
+        Doctor Management
+      </h2>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6">
-        <h2 className="text-2xl font-bold mb-4">Doctor Management</h2>
-        <div className="flex justify-between items-center mb-4">
-          {/* Search bar */}
-          <input
-            type="text"
-            placeholder="Search by name, email or phone..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1); // reset page on new search
-            }}
-            className="border p-2 rounded w-full max-w-md"
-          />
-          {/* Add Doctor Button */}
-          <button
-            onClick={() => setShowModal(true)}
-            className="ml-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-          >
-            Add Doctor
-          </button>
-        </div>
+      {/* Search & Add */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-3">
+        <input
+          type="text"
+          placeholder="Search by name, email or phone..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="border p-2 rounded w-full md:max-w-md"
+        />
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          Add Doctor
+        </button>
+      </div>
 
-        <div className="overflow-x-auto bg-white rounded shadow border border-gray-200">
-          <table className="min-w-full">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="text-left py-2 px-4 border-b">Name</th>
-                <th className="text-left py-2 px-4 border-b">Email</th>
-                <th className="text-left py-2 px-4 border-b">Specialty</th>
-                <th className="text-left py-2 px-4 border-b">Phone</th>
-                <th className="text-left py-2 px-4 border-b">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentDoctors.length > 0 ? (
-                currentDoctors.map((doc) => (
-                  <tr
-                    key={doc._id}
-                    className={
-                      currentDoctors.indexOf(doc) % 2 === 0
-                        ? "bg-gray-50"
-                        : "bg-white"
-                    }
-                  >
-                    <td className="py-2 px-4 border-b">{doc.name}</td>
-                    <td className="py-2 px-4 border-b">{doc.email}</td>
-                    <td className="py-2 px-4 border-b">{doc.specialty}</td>
-                    <td className="py-2 px-4 border-b">{doc.phone}</td>
-                    <td className="py-2 px-4 border-b space-x-2">
-                      <button
-                        className="text-yellow-600 hover:text-yellow-800"
-                        onClick={() => handleEditClick(doc)}
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-800"
-                        onClick={() => handleDelete(doc._id)}
-                      >
-                        <FaTrash />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="py-4 text-center text-gray-500">
-                    No doctors found.
+      {/* Table */}
+      <div className="overflow-x-auto bg-white rounded shadow border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                Name
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                Email
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                Specialty
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                Phone
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {currentDoctors.length > 0 ? (
+              currentDoctors.map((doc, idx) => (
+                <tr
+                  key={doc._id}
+                  className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}
+                >
+                  <td className="px-4 py-2">{doc.name}</td>
+                  <td className="px-4 py-2">{doc.email}</td>
+                  <td className="px-4 py-2">{doc.specialty}</td>
+                  <td className="px-4 py-2">{doc.phone}</td>
+                  <td className="px-4 py-2 flex flex-wrap gap-2">
+                    <button
+                      className="bg-yellow-400 text-white px-2 py-1 rounded hover:bg-yellow-500"
+                      onClick={() => handleEditClick(doc)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                      onClick={() => handleDelete(doc._id)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="py-4 text-center text-gray-500">
+                  No doctors found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {filteredDoctors.length > doctorsPerPage && (
+        <div className="flex justify-center mt-4 space-x-2 flex-wrap">
+          <button
+            onClick={() => paginate(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded ${
+              currentPage === 1
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            }`}
+          >
+            Prev
+          </button>
+          {[...Array(totalPages)].map((_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => paginate(i + 1)}
+              className={`px-3 py-1 rounded ${
+                currentPage === i + 1
+                  ? "bg-blue-800 text-white"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => paginate(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`px-3 py-1 rounded ${
+              currentPage === totalPages
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            }`}
+          >
+            Next
+          </button>
         </div>
+      )}
 
-        {/* Pagination Controls */}
-        {filteredDoctors.length > doctorsPerPage && (
-          <div className="flex justify-center mt-4 space-x-2">
-            <button
-              onClick={() => paginate(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-3 py-1 rounded ${
-                currentPage === 1
-                  ? "bg-gray-300 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
-              }`}
+      {/* Add / Edit Modals */}
+      {[
+        {
+          show: showModal,
+          setShow: setShowModal,
+          data: newDoctor,
+          setData: setNewDoctor,
+          onSubmit: handleAddDoctor,
+          title: "Add Doctor",
+        },
+        {
+          show: editModal,
+          setShow: setEditModal,
+          data: currentDoctor,
+          setData: setCurrentDoctor,
+          onSubmit: handleEditSubmit,
+          title: "Edit Doctor",
+        },
+      ].map(
+        ({ show, setShow, data, setData, onSubmit, title }, idx) =>
+          show && (
+            <div
+              key={idx}
+              className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"
             >
-              Prev
-            </button>
-
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => paginate(i + 1)}
-                className={`px-3 py-1 rounded ${
-                  currentPage === i + 1
-                    ? "bg-blue-800 text-white"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => paginate(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-1 rounded ${
-                currentPage === totalPages
-                  ? "bg-gray-300 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        {/* Add Modal */}
-        {showModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-              <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-2 right-2 text-gray-500 hover:text-black"
-              >
-                <FaTimes />
-              </button>
-              <h3 className="text-xl font-bold mb-4 text-center">Add Doctor</h3>
-              <form onSubmit={handleAddDoctor} className="space-y-4">
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Full Name"
-                  value={newDoctor.name}
-                  onChange={(e) =>
-                    setNewDoctor({ ...newDoctor, name: e.target.value })
-                  }
-                  className="w-full border px-4 py-2 rounded"
-                  required
-                />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Email Address"
-                  value={newDoctor.email}
-                  onChange={(e) =>
-                    setNewDoctor({ ...newDoctor, email: e.target.value })
-                  }
-                  className="w-full border px-4 py-2 rounded"
-                  required
-                />
-                <input
-                  type="text"
-                  name="specialty"
-                  placeholder="Specialty"
-                  value={newDoctor.specialty}
-                  onChange={(e) =>
-                    setNewDoctor({ ...newDoctor, specialty: e.target.value })
-                  }
-                  className="w-full border px-4 py-2 rounded"
-                  required
-                />
-                <input
-                  type="text"
-                  name="phone"
-                  placeholder="Phone Number"
-                  value={newDoctor.phone}
-                  onChange={(e) =>
-                    setNewDoctor({ ...newDoctor, phone: e.target.value })
-                  }
-                  className="w-full border px-4 py-2 rounded"
-                  required
-                />
+              <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
                 <button
-                  type="submit"
-                  className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
+                  onClick={() => setShow(false)}
+                  className="absolute top-2 right-2 text-gray-500 hover:text-black"
                 >
-                  Add Doctor
+                  <FaTimes />
                 </button>
-              </form>
+                <h3 className="text-xl font-bold mb-4 text-center">{title}</h3>
+                <form onSubmit={onSubmit} className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={data?.name || ""}
+                    onChange={(e) => setData({ ...data, name: e.target.value })}
+                    className="w-full border px-4 py-2 rounded"
+                    required
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email Address"
+                    value={data?.email || ""}
+                    onChange={(e) =>
+                      setData({ ...data, email: e.target.value })
+                    }
+                    className="w-full border px-4 py-2 rounded"
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Specialty"
+                    value={data?.specialty || ""}
+                    onChange={(e) =>
+                      setData({ ...data, specialty: e.target.value })
+                    }
+                    className="w-full border px-4 py-2 rounded"
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Phone Number"
+                    value={data?.phone || ""}
+                    onChange={(e) =>
+                      setData({ ...data, phone: e.target.value })
+                    }
+                    className="w-full border px-4 py-2 rounded"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
+                  >
+                    {title.includes("Add") ? "Add Doctor" : "Save Changes"}
+                  </button>
+                </form>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {editModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-              <button
-                onClick={() => setEditModal(false)}
-                className="absolute top-2 right-2 text-gray-500 hover:text-black"
-              >
-                <FaTimes />
-              </button>
-              <h3 className="text-xl font-bold mb-4 text-center">
-                Edit Doctor
-              </h3>
-              <form onSubmit={handleEditSubmit} className="space-y-4">
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Full Name"
-                  value={currentDoctor?.name || ""}
-                  onChange={(e) =>
-                    setCurrentDoctor({ ...currentDoctor, name: e.target.value })
-                  }
-                  className="w-full border px-4 py-2 rounded"
-                  required
-                />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Email Address"
-                  value={currentDoctor?.email || ""}
-                  onChange={(e) =>
-                    setCurrentDoctor({
-                      ...currentDoctor,
-                      email: e.target.value,
-                    })
-                  }
-                  className="w-full border px-4 py-2 rounded"
-                  required
-                />
-                <input
-                  type="text"
-                  name="specialty"
-                  placeholder="Specialty"
-                  value={currentDoctor?.specialty || ""}
-                  onChange={(e) =>
-                    setCurrentDoctor({
-                      ...currentDoctor,
-                      specialty: e.target.value,
-                    })
-                  }
-                  className="w-full border px-4 py-2 rounded"
-                  required
-                />
-                <input
-                  type="text"
-                  name="phone"
-                  placeholder="Phone Number"
-                  value={currentDoctor?.phone || ""}
-                  onChange={(e) =>
-                    setCurrentDoctor({
-                      ...currentDoctor,
-                      phone: e.target.value,
-                    })
-                  }
-                  className="w-full border px-4 py-2 rounded"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
-                >
-                  Save Changes
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-      </main>
+          )
+      )}
     </div>
   );
 };

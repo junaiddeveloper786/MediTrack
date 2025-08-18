@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import PatientSidebar from "../../components/PatientSidebar";
 
-// Helper function to format time in "hh:mm AM/PM" format
-function formatTime(timeStr) {
-  if (!timeStr) return "";
-  const [hourStr, minStr] = timeStr.split(":");
-  let hour = parseInt(hourStr, 10);
-  const minute = minStr;
-  const ampm = hour >= 12 ? "PM" : "AM";
-  hour = hour % 12 || 12; // convert 0 => 12 for 12AM
-  return `${hour.toString().padStart(2, "0")}:${minute} ${ampm}`;
+// Helper function to format time in "hh:mm AM/PM"
+function formatTime(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  return `${hours.toString().padStart(2, "0")}:${minutes
+    .toString()
+    .padStart(2, "0")} ${ampm}`;
 }
 
 export default function PatientAppointments() {
@@ -35,9 +36,7 @@ export default function PatientAppointments() {
       try {
         const res = await axios.get(
           `http://localhost:5000/api/appointments?patientId=${userId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         setAppointments(res.data.appointments || []);
       } catch (err) {
@@ -53,7 +52,6 @@ export default function PatientAppointments() {
     fetchAppointments();
   }, [userId, token]);
 
-  // Cancel appointment handler
   const handleCancel = async (appointmentId) => {
     if (!window.confirm("Are you sure you want to cancel this appointment?"))
       return;
@@ -64,16 +62,14 @@ export default function PatientAppointments() {
       await axios.put(
         `http://localhost:5000/api/appointments/cancel/${appointmentId}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       toast.success("Appointment cancelled successfully");
-
-      // Remove cancelled appointment from the list immediately
       setAppointments((prev) =>
-        prev.filter((appt) => appt._id !== appointmentId)
+        prev.map((appt) =>
+          appt._id === appointmentId ? { ...appt, status: "Cancelled" } : appt
+        )
       );
     } catch (err) {
       console.error("Cancel appointment error:", err.response || err.message);
@@ -85,18 +81,20 @@ export default function PatientAppointments() {
     }
   };
 
-  if (loading) return <div>Loading appointments...</div>;
+  if (loading)
+    return <div className="p-4 text-gray-700">Loading appointments...</div>;
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
-      <PatientSidebar />
-      <main className="flex-1 p-6 max-w-5xl mx-auto">
-        <h1 className="text-2xl font-semibold mb-6">My Appointments</h1>
+    <div className="p-4 md:p-6 max-w-5xl mx-auto font-sans">
+      <h1 className="text-2xl font-semibold mb-6 text-gray-800">
+        My Appointments
+      </h1>
 
-        {appointments.length === 0 ? (
-          <p>You have no appointments booked.</p>
-        ) : (
-          <table className="w-full bg-white rounded shadow text-left">
+      {appointments.length === 0 ? (
+        <p>You have no appointments booked.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px] bg-white rounded shadow text-left">
             <thead className="bg-blue-600 text-white">
               <tr>
                 <th className="p-3">Doctor</th>
@@ -109,27 +107,46 @@ export default function PatientAppointments() {
             </thead>
             <tbody>
               {appointments.map((appt) => {
-                const apptDate = new Date(appt.date);
-                const dayName = apptDate.toLocaleDateString("en-US", {
+                const apptStart = new Date(appt.startTime);
+                const apptEnd = new Date(appt.endTime);
+                const dayName = apptStart.toLocaleDateString("en-US", {
                   weekday: "long",
                 });
+                const dateStr = apptStart.toLocaleDateString("en-GB");
+
                 return (
                   <tr key={appt._id} className="border-b">
                     <td className="p-3">{appt.doctorId?.name || "N/A"}</td>
                     <td className="p-3">{dayName}</td>
-                    <td className="p-3">
-                      {apptDate.toLocaleDateString("en-GB")}
-                    </td>
+                    <td className="p-3">{dateStr}</td>
                     <td className="p-3">
                       {formatTime(appt.startTime)} - {formatTime(appt.endTime)}
                     </td>
-                    <td className="p-3">{appt.status || "Scheduled"}</td>
+                    <td className="p-3">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          appt.status === "Completed"
+                            ? "bg-green-100 text-green-700"
+                            : appt.status === "Confirmed"
+                            ? "bg-blue-100 text-blue-700"
+                            : appt.status === "Pending"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : appt.status === "Cancelled"
+                            ? "bg-red-100 text-red-700"
+                            : appt.status === "Rescheduled"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {appt.status || "Scheduled"}
+                      </span>
+                    </td>
                     <td className="p-3">
                       {appt.status !== "Cancelled" ? (
                         <button
                           onClick={() => handleCancel(appt._id)}
                           disabled={cancellingId === appt._id}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 disabled:opacity-50"
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 disabled:opacity-50 w-full md:w-auto"
                         >
                           {cancellingId === appt._id
                             ? "Cancelling..."
@@ -144,8 +161,8 @@ export default function PatientAppointments() {
               })}
             </tbody>
           </table>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 }
