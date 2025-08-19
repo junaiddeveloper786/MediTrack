@@ -1,12 +1,19 @@
+// src/pages/Admin/DoctorManagement.jsx
 import React, { useEffect, useState } from "react";
-import { FaEdit, FaTrash, FaTimes } from "react-icons/fa";
-import axios from "axios";
+import { FaTrash, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 
-const DoctorManagement = () => {
+import {
+  fetchDoctors as fetchDoctorsService,
+  addDoctor as addDoctorService,
+  updateDoctor as updateDoctorService,
+  deleteDoctor as deleteDoctorService,
+} from "../../services/doctorService";
+
+export default function DoctorManagement() {
   const [doctors, setDoctors] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editModal, setEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [newDoctor, setNewDoctor] = useState({
     name: "",
     email: "",
@@ -14,77 +21,76 @@ const DoctorManagement = () => {
     phone: "",
   });
   const [currentDoctor, setCurrentDoctor] = useState(null);
-
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
   const doctorsPerPage = 10;
 
-  // Search state
-  const [searchTerm, setSearchTerm] = useState("");
+  useEffect(() => {
+    loadDoctors();
+  }, []);
 
-  const fetchDoctors = async () => {
+  const loadDoctors = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/doctors");
-      setDoctors(res.data);
+      const res = await fetchDoctorsService();
+      setDoctors(res.data || []);
       setCurrentPage(1);
     } catch (err) {
+      console.error(err);
       toast.error("Failed to fetch doctors");
     }
   };
 
-  useEffect(() => {
-    fetchDoctors();
-  }, []);
-
   const handleAddDoctor = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/doctors", newDoctor);
+      await addDoctorService(newDoctor);
       toast.success("Doctor added successfully");
-      setShowModal(false);
+      setShowAddModal(false);
       setNewDoctor({ name: "", email: "", specialty: "", phone: "" });
-      fetchDoctors();
+      loadDoctors();
     } catch (err) {
-      toast.error("Failed to add doctor");
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to add doctor");
     }
   };
 
   const handleEditClick = (doctor) => {
     setCurrentDoctor(doctor);
-    setEditModal(true);
+    setShowEditModal(true);
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(
-        `http://localhost:5000/api/doctors/${currentDoctor._id}`,
-        currentDoctor
-      );
+      await updateDoctorService(currentDoctor._id, currentDoctor);
       toast.success("Doctor updated successfully");
-      setEditModal(false);
-      fetchDoctors();
+      setShowEditModal(false);
+      setCurrentDoctor(null);
+      loadDoctors();
     } catch (err) {
-      toast.error("Failed to update doctor");
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to update doctor");
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this doctor?")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/doctors/${id}`);
+      await deleteDoctorService(id);
       toast.success("Doctor deleted successfully");
-      fetchDoctors();
+      loadDoctors();
     } catch (err) {
-      toast.error("Failed to delete doctor");
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to delete doctor");
     }
   };
 
+  // Filtered & paginated doctors
   const filteredDoctors = doctors.filter(
     (doc) =>
       (doc.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (doc.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doc.phone || "").toLowerCase().includes(searchTerm.toLowerCase())
+      (doc.phone || "").includes(searchTerm)
   );
 
   const indexOfLastDoctor = currentPage * doctorsPerPage;
@@ -94,6 +100,7 @@ const DoctorManagement = () => {
     indexOfLastDoctor
   );
   const totalPages = Math.ceil(filteredDoctors.length / doctorsPerPage);
+
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
@@ -115,14 +122,14 @@ const DoctorManagement = () => {
           className="border p-2 rounded w-full md:max-w-md"
         />
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => setShowAddModal(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
         >
           Add Doctor
         </button>
       </div>
 
-      {/* Table */}
+      {/* Doctor Table */}
       <div className="overflow-x-auto bg-white rounded shadow border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
@@ -223,91 +230,84 @@ const DoctorManagement = () => {
         </div>
       )}
 
-      {/* Add / Edit Modals */}
-      {[
-        {
-          show: showModal,
-          setShow: setShowModal,
-          data: newDoctor,
-          setData: setNewDoctor,
-          onSubmit: handleAddDoctor,
-          title: "Add Doctor",
-        },
-        {
-          show: editModal,
-          setShow: setEditModal,
-          data: currentDoctor,
-          setData: setCurrentDoctor,
-          onSubmit: handleEditSubmit,
-          title: "Edit Doctor",
-        },
-      ].map(
-        ({ show, setShow, data, setData, onSubmit, title }, idx) =>
-          show && (
-            <div
-              key={idx}
-              className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"
-            >
-              <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-                <button
-                  onClick={() => setShow(false)}
-                  className="absolute top-2 right-2 text-gray-500 hover:text-black"
-                >
-                  <FaTimes />
-                </button>
-                <h3 className="text-xl font-bold mb-4 text-center">{title}</h3>
-                <form onSubmit={onSubmit} className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Full Name"
-                    value={data?.name || ""}
-                    onChange={(e) => setData({ ...data, name: e.target.value })}
-                    className="w-full border px-4 py-2 rounded"
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email Address"
-                    value={data?.email || ""}
-                    onChange={(e) =>
-                      setData({ ...data, email: e.target.value })
-                    }
-                    className="w-full border px-4 py-2 rounded"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Specialty"
-                    value={data?.specialty || ""}
-                    onChange={(e) =>
-                      setData({ ...data, specialty: e.target.value })
-                    }
-                    className="w-full border px-4 py-2 rounded"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Phone Number"
-                    value={data?.phone || ""}
-                    onChange={(e) =>
-                      setData({ ...data, phone: e.target.value })
-                    }
-                    className="w-full border px-4 py-2 rounded"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
-                  >
-                    {title.includes("Add") ? "Add Doctor" : "Save Changes"}
-                  </button>
-                </form>
-              </div>
-            </div>
-          )
+      {/* Add Modal */}
+      {showAddModal && (
+        <Modal
+          title="Add Doctor"
+          data={newDoctor}
+          setData={setNewDoctor}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddDoctor}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <Modal
+          title="Edit Doctor"
+          data={currentDoctor}
+          setData={setCurrentDoctor}
+          onClose={() => setShowEditModal(false)}
+          onSubmit={handleEditSubmit}
+        />
       )}
     </div>
   );
-};
+}
 
-export default DoctorManagement;
+// Reusable Modal Component
+function Modal({ title, data, setData, onClose, onSubmit }) {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+      <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-500 hover:text-black"
+        >
+          <FaTimes />
+        </button>
+        <h3 className="text-xl font-bold mb-4 text-center">{title}</h3>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={data?.name || ""}
+            onChange={(e) => setData({ ...data, name: e.target.value })}
+            className="w-full border px-4 py-2 rounded"
+            required
+          />
+          <input
+            type="email"
+            placeholder="Email Address"
+            value={data?.email || ""}
+            onChange={(e) => setData({ ...data, email: e.target.value })}
+            className="w-full border px-4 py-2 rounded"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Specialty"
+            value={data?.specialty || ""}
+            onChange={(e) => setData({ ...data, specialty: e.target.value })}
+            className="w-full border px-4 py-2 rounded"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Phone Number"
+            value={data?.phone || ""}
+            onChange={(e) => setData({ ...data, phone: e.target.value })}
+            className="w-full border px-4 py-2 rounded"
+            required
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
+          >
+            {title.includes("Add") ? "Add Doctor" : "Save Changes"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

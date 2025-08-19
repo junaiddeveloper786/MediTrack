@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { toast } from "react-toastify";
+import { register } from "../services/authService";
 
 function Register() {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/auth/register", formData);
+      await register(formData);
       toast.success("Registered successfully");
       navigate("/");
     } catch (err) {

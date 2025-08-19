@@ -1,60 +1,50 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { toast } from "react-toastify";
+import {
+  fetchPatients as fetchPatientsService,
+  addPatient,
+  updatePatient,
+  deletePatient,
+} from "../../services/patientService";
 
 export default function AdminPatients() {
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Form data
   const initialFormState = { name: "", email: "", phone: "", password: "" };
   const [formData, setFormData] = useState(initialFormState);
   const [editPatientId, setEditPatientId] = useState(null);
 
   useEffect(() => {
-    fetchPatients();
+    loadPatients();
   }, []);
 
-  const fetchPatients = async () => {
+  const loadPatients = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/patients", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetchPatientsService();
       setPatients(res.data.patients || []);
       setCurrentPage(1);
     } catch (err) {
       toast.error("Failed to fetch patients");
-      console.error("Fetch patients error:", err.response || err.message);
+      console.error(err.response || err.message);
     }
   };
 
-  // Delete patient
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this patient?"))
       return;
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("You must login first");
-      return;
-    }
     try {
-      await axios.delete(`http://localhost:5000/api/patients/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await deletePatient(id);
       toast.success("Patient deleted");
-      fetchPatients();
+      loadPatients();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete patient");
-      console.error("Delete error:", err.response || err.message);
+      console.error(err.response || err.message);
     }
   };
 
@@ -81,47 +71,29 @@ export default function AdminPatients() {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem("token");
-    if (!token) return toast.error("You must login first");
     try {
-      await axios.post("http://localhost:5000/api/patients", formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await addPatient(formData);
       toast.success("Patient added");
       setShowAddModal(false);
-      fetchPatients();
+      loadPatients();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to add patient");
-      console.error("Add error:", err.response || err.message);
+      console.error(err.response || err.message);
     }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem("token");
-    if (!token) return toast.error("You must login first");
     try {
-      const payload = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-      };
-      if (formData.password?.trim() !== "")
-        payload.password = formData.password;
-
-      await axios.put(
-        `http://localhost:5000/api/patients/${editPatientId}`,
-        payload,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const payload = { ...formData };
+      if (!payload.password?.trim()) delete payload.password;
+      await updatePatient(editPatientId, payload);
       toast.success("Patient updated");
       setShowEditModal(false);
-      fetchPatients();
+      loadPatients();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update patient");
-      console.error("Edit error:", err.response || err.message);
+      console.error(err.response || err.message);
     }
   };
 

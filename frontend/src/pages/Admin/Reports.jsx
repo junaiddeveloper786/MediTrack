@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useState, useMemo } from "react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { toast } from "react-toastify";
+import {
+  fetchAppointmentsReport,
+  fetchPatientsReport,
+  fetchDoctorsReport,
+  fetchSlotsReport,
+} from "../../services/reportService";
 
 export default function Reports() {
   const [reportType, setReportType] = useState("appointments");
@@ -16,24 +21,26 @@ export default function Reports() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("You must login first");
-        setLoading(false);
-        return;
+      let data;
+      switch (reportType) {
+        case "appointments":
+          data = await fetchAppointmentsReport({ startDate, endDate, status });
+          break;
+        case "patients":
+          data = await fetchPatientsReport({ startDate, endDate, search });
+          break;
+        case "doctors":
+          data = await fetchDoctorsReport({ startDate, endDate, search });
+          break;
+        case "slots":
+          data = await fetchSlotsReport({ startDate, endDate });
+          break;
+        default:
+          data = { data: [] };
       }
-
-      const params = { startDate, endDate };
-      if (reportType === "appointments") params.status = status;
-      if (reportType === "patients" || reportType === "doctors")
-        params.search = search;
-
-      const { data } = await axios.get(
-        `http://localhost:5000/api/reports/${reportType}`,
-        { headers: { Authorization: `Bearer ${token}` }, params }
-      );
-
-      setReportData(data.data || []);
+      // Safely set reportData as array
+      const d = data.data;
+      setReportData(Array.isArray(d) ? d : []);
     } catch (err) {
       console.error(err);
       toast.error("Failed to fetch reports");
@@ -47,11 +54,10 @@ export default function Reports() {
     fetchReports();
   }, [reportType, search, startDate, endDate, status]);
 
+  // Helpers
   const clean = (v) => (v == null ? "" : String(v));
-  const csvEscape = (v) => {
-    const s = clean(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
+  const csvEscape = (v) =>
+    /[",\n]/.test(clean(v)) ? `"${clean(v).replace(/"/g, '""')}"` : clean(v);
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
@@ -71,14 +77,15 @@ export default function Reports() {
       "0"
     )} ${ampm}`;
   };
-  const getWeekday = (dateStr) => {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { weekday: "long" });
-  };
+  const getWeekday = (dateStr) =>
+    dateStr
+      ? new Date(dateStr).toLocaleDateString("en-US", { weekday: "long" })
+      : "";
   const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
-  const generateTableData = () => {
+  // Memoized table data (safe map)
+  const tableData = useMemo(() => {
+    const dataArray = Array.isArray(reportData) ? reportData : [];
     let headers = [],
       rows = [];
 
@@ -94,13 +101,13 @@ export default function Reports() {
           "Status",
           "Time",
         ];
-        rows = reportData.map((r) => [
+        rows = dataArray.map((r) => [
           r.id || "",
           r.doctor || "",
           r.specialty || "",
           r.patient || "",
-          r.date || formatDate(r.date),
-          r.day || getWeekday(r.date),
+          r.date ? formatDate(r.date) : "",
+          getWeekday(r.date),
           r.status || "",
           `${formatTime(r.starttime)} - ${formatTime(r.endtime)}`,
         ]);
@@ -108,34 +115,34 @@ export default function Reports() {
 
       case "patients":
         headers = ["ID", "Name", "Email", "Phone", "Created At"];
-        rows = reportData.map((r) => [
+        rows = dataArray.map((r) => [
           r.id || "",
           r.name || "",
           r.email || "",
           r.phone || "",
-          r.createdat || formatDate(r.createdat),
+          r.createdat ? formatDate(r.createdat) : "",
         ]);
         break;
 
       case "doctors":
         headers = ["ID", "Name", "Email", "Specialty", "Created At"];
-        rows = reportData.map((r) => [
+        rows = dataArray.map((r) => [
           r.id || "",
           r.name || "",
           r.email || "",
           r.specialty || "",
-          r.createdat || formatDate(r.createdat),
+          r.createdat ? formatDate(r.createdat) : "",
         ]);
         break;
 
       case "slots":
         headers = ["ID", "Doctor", "Specialty", "Date", "Day", "Time"];
-        rows = reportData.map((r) => [
+        rows = dataArray.map((r) => [
           r.id || "",
           r.doctor || "",
           r.specialty || "",
-          r.date || formatDate(r.date),
-          r.day || getWeekday(r.date),
+          r.date ? formatDate(r.date) : "",
+          getWeekday(r.date),
           `${formatTime(r.starttime)} - ${formatTime(r.endtime)}`,
         ]);
         break;
@@ -143,16 +150,17 @@ export default function Reports() {
       default:
         break;
     }
-
     return { headers, rows };
-  };
+  }, [reportData, reportType]);
 
+  // CSV Export
   const exportCSV = () => {
-    if (!reportData.length) return;
-    const { headers, rows } = generateTableData();
+    if (!tableData.rows.length) return;
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
+      [tableData.headers, ...tableData.rows]
+        .map((row) => row.map(csvEscape).join(","))
+        .join("\n");
     const link = document.createElement("a");
     link.href = encodeURI(csvContent);
     link.download = `${reportType}.csv`;
@@ -161,9 +169,9 @@ export default function Reports() {
     link.remove();
   };
 
+  // PDF Export
   const exportPDF = () => {
-    if (!reportData.length) return;
-    const { headers, rows } = generateTableData();
+    if (!tableData.rows.length) return;
     const doc = new jsPDF({
       orientation: "landscape",
       unit: "pt",
@@ -171,18 +179,26 @@ export default function Reports() {
     });
     doc.setFontSize(16);
     doc.text(`MediTrack — ${capitalize(reportType)} Reports`, 40, 40);
-    const filterLine = `Filters: ${
-      startDate ? `From ${formatDate(startDate)}` : "All Dates"
-    } ${endDate ? `to ${formatDate(endDate)}` : ""} ${
-      reportType === "appointments" ? `| Status: ${status}` : ""
-    } ${search ? `| Search: ${search}` : ""}`;
-    doc.setFontSize(10);
-    doc.text(filterLine, 40, 60);
+
+    const filters = [
+      startDate ? `From: ${formatDate(startDate)}` : null,
+      endDate ? `To: ${formatDate(endDate)}` : null,
+      reportType === "appointments" ? `Status: ${status}` : null,
+      search ? `Search: ${search}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    if (filters) {
+      doc.setFontSize(10);
+      doc.text(`Filters: ${filters}`, 40, 60);
+    }
+
     import("jspdf-autotable").then(() => {
       doc.autoTable({
-        head: [headers],
-        body: rows,
-        startY: 80,
+        head: [tableData.headers],
+        body: tableData.rows,
+        startY: filters ? 80 : 60,
         styles: { fontSize: 9, cellPadding: 6 },
         headStyles: { fillColor: [37, 99, 235] },
         margin: { left: 40, right: 40 },
@@ -207,7 +223,7 @@ export default function Reports() {
         Reports
       </h2>
 
-      {/* Report Type & Filters */}
+      {/* Filters */}
       <div className="flex flex-wrap items-end gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700">
@@ -310,7 +326,6 @@ export default function Reports() {
           >
             Export PDF
           </button>
-          {/* New Clear Button */}
           <button
             onClick={() => {
               setStartDate("");
@@ -334,7 +349,7 @@ export default function Reports() {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100 border-b">
               <tr>
-                {generateTableData().headers.map((h) => (
+                {tableData.headers.map((h) => (
                   <th key={h} className="px-6 py-3 text-left">
                     {h}
                   </th>
@@ -342,17 +357,17 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {reportData.length === 0 ? (
+              {tableData.rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={generateTableData().headers.length}
+                    colSpan={tableData.headers.length}
                     className="px-6 py-6 text-center text-gray-500"
                   >
                     No data for selected filters.
                   </td>
                 </tr>
               ) : (
-                generateTableData().rows.map((row, idx) => (
+                tableData.rows.map((row, idx) => (
                   <tr key={idx} className="border-b hover:bg-gray-50">
                     {row.map((v, i) => (
                       <td key={i} className="px-6 py-3">

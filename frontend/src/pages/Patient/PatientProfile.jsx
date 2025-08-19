@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { toast } from "react-toastify";
+import {
+  fetchPatientProfile,
+  updatePatientProfile,
+} from "../../services/profileService";
 
 export default function PatientProfile() {
   const [profile, setProfile] = useState({
@@ -19,40 +22,32 @@ export default function PatientProfile() {
     password: "",
   });
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("You must login first");
+  const loadProfile = async () => {
+    try {
+      const res = await fetchPatientProfile();
+      const data = res.data?.user || res.data || {};
+      setProfile({
+        name: data.name || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        role: data.role || "",
+      });
+      setFormData({
+        name: data.name || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        password: "",
+      });
+    } catch (err) {
+      console.error("Failed to load profile", err);
+      toast.error(err.response?.data?.message || "Failed to load profile data");
+    } finally {
       setLoading(false);
-      return;
     }
+  };
 
-    axios
-      .get("http://localhost:5000/api/patients/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        const data = res.data?.user || res.data || {};
-        setProfile({
-          name: data.name || "",
-          email: data.email || "",
-          phone: data.phone || "",
-          role: data.role || "",
-        });
-        setFormData({
-          name: data.name || "",
-          email: data.email || "",
-          phone: data.phone || "",
-          password: "",
-        });
-      })
-      .catch((err) => {
-        console.error("Failed to load profile", err.response || err.message);
-        toast.error(
-          err.response?.data?.message || "Failed to load profile data"
-        );
-      })
-      .finally(() => setLoading(false));
+  useEffect(() => {
+    loadProfile();
   }, []);
 
   const handleChange = (e) => {
@@ -62,34 +57,29 @@ export default function PatientProfile() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    const token = localStorage.getItem("token");
-    if (!token) return toast.error("Not logged in");
-
     try {
-      const { data } = await axios.put(
-        "http://localhost:5000/api/patients/profile",
-        {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password || undefined,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const dataToUpdate = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      };
+      if (formData.password) dataToUpdate.password = formData.password;
 
-      toast.success(data.message || "Profile updated successfully!");
+      const res = await updatePatientProfile(dataToUpdate);
+      toast.success(res.data.message || "Profile updated successfully!");
       setProfile({ ...profile, ...formData, password: "" });
-      setShowEditModal(false);
       setFormData({ ...formData, password: "" });
+      setShowEditModal(false);
     } catch (err) {
-      console.error("Update failed", err.response || err.message);
+      console.error("Update failed", err);
       toast.error(err.response?.data?.message || "Failed to update profile");
     } finally {
       setUpdating(false);
     }
   };
 
-  if (loading) return <div>Loading profile...</div>;
+  if (loading)
+    return <div className="p-4 text-gray-700">Loading profile...</div>;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto font-sans">
@@ -97,7 +87,6 @@ export default function PatientProfile() {
         <h1 className="text-2xl font-semibold mb-4 text-gray-800">
           My Profile
         </h1>
-
         <div>
           <strong>Name:</strong> {profile.name}
         </div>
@@ -118,7 +107,6 @@ export default function PatientProfile() {
         </button>
       </div>
 
-      {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md relative shadow-lg">

@@ -1,9 +1,14 @@
+// src/pages/patient/BookAppointment.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { toast } from "react-toastify";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import {
+  fetchDoctors,
+  fetchAvailableSlots,
+  bookAppointment,
+} from "../../services/appointmentService";
 
 export default function BookAppointment() {
   const [doctors, setDoctors] = useState([]);
@@ -14,19 +19,15 @@ export default function BookAppointment() {
   const [bookingSlotId, setBookingSlotId] = useState(null);
 
   const navigate = useNavigate();
-  const API = "http://localhost:5000/api";
-  const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
   useEffect(() => {
-    fetchDoctors();
+    loadDoctors();
   }, []);
 
-  const fetchDoctors = async () => {
+  const loadDoctors = async () => {
     try {
-      const res = await axios.get(`${API}/doctors`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetchDoctors();
       setDoctors(res.data || res.data?.doctors || []);
     } catch (err) {
       console.error("fetchDoctors:", err);
@@ -34,7 +35,7 @@ export default function BookAppointment() {
     }
   };
 
-  const fetchSlots = async () => {
+  const loadSlots = async () => {
     if (!selectedDoctor || !selectedDate) {
       toast.info("Please select doctor and date");
       return;
@@ -47,11 +48,7 @@ export default function BookAppointment() {
       const day = String(selectedDate.getDate()).padStart(2, "0");
       const dateStr = `${year}-${month}-${day}`;
 
-      const res = await axios.get(`${API}/slots/available`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { doctorId: selectedDoctor, date: dateStr },
-      });
-
+      const res = await fetchAvailableSlots(selectedDoctor, dateStr);
       setSlots(res.data.slots || []);
     } catch (err) {
       console.error("fetchSlots:", err);
@@ -62,7 +59,7 @@ export default function BookAppointment() {
   };
 
   const handleBook = async (slot) => {
-    if (!user || !user.id) {
+    if (!user?.id) {
       toast.error("User info missing. Please login again.");
       return;
     }
@@ -70,17 +67,13 @@ export default function BookAppointment() {
     setBookingSlotId(slot._id);
 
     try {
-      const payload = {
+      await bookAppointment({
         patientId: user.id,
         doctorId: slot.doctorId?._id || selectedDoctor,
         slotId: slot._id,
         date: slot.date,
         startTime: slot.startTime,
         endTime: slot.endTime,
-      };
-
-      await axios.post(`${API}/appointments`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       toast.success("Appointment booked!");
@@ -128,7 +121,7 @@ export default function BookAppointment() {
           />
 
           <button
-            onClick={fetchSlots}
+            onClick={loadSlots}
             className="mt-4 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
           >
             {loadingSlots ? "Loading..." : "Check Slots"}

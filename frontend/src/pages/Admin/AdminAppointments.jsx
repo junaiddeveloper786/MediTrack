@@ -1,9 +1,19 @@
 // src/pages/Admin/AdminAppointments.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
+
+import { fetchDoctors } from "../../services/doctorService";
+import {
+  fetchAppointments,
+  cancelAppointment,
+  confirmAppointment,
+  completeAppointment,
+  rescheduleAppointment,
+  deleteAppointment,
+} from "../../services/appointmentService";
+import { fetchAvailableSlots } from "../../services/slotService";
 
 // Safe formatting functions
 const formatDate = (dateStr) => {
@@ -58,30 +68,23 @@ export default function AdminAppointments() {
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [loadingActionId, setLoadingActionId] = useState("");
 
-  const token = localStorage.getItem("token");
-
   useEffect(() => {
-    fetchDoctors();
-    fetchAppointments();
+    loadDoctors();
+    loadAppointments();
   }, []);
 
-  const fetchDoctors = async () => {
+  const loadDoctors = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/doctors", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetchDoctors();
       setDoctors(res.data || []);
     } catch {
       toast.error("Failed to fetch doctors");
     }
   };
 
-  const fetchAppointments = async (filters = {}) => {
+  const loadAppointments = async (filters = {}) => {
     try {
-      const res = await axios.get("http://localhost:5000/api/appointments", {
-        headers: { Authorization: `Bearer ${token}` },
-        params: filters,
-      });
+      const res = await fetchAppointments(filters);
       setAppointments(res.data.appointments || []);
     } catch {
       toast.error("Failed to fetch appointments");
@@ -89,7 +92,7 @@ export default function AdminAppointments() {
   };
 
   const applyFilter = () => {
-    fetchAppointments({
+    loadAppointments({
       doctorId: filterDoctor || undefined,
       fromDate: filterFrom ? filterFrom.toLocaleDateString("en-CA") : undefined,
       toDate: filterTo ? filterTo.toLocaleDateString("en-CA") : undefined,
@@ -102,34 +105,18 @@ export default function AdminAppointments() {
     setFilterFrom(null);
     setFilterTo(null);
     setFilterStatus("");
-    fetchAppointments();
+    loadAppointments();
   };
 
   const handleAction = async (id, action) => {
     setLoadingActionId(id + action);
     try {
-      if (action === "Cancelled") {
-        await axios.put(
-          `http://localhost:5000/api/appointments/cancel/${id}`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } else if (action === "Confirmed") {
-        await axios.put(
-          `http://localhost:5000/api/appointments/confirm/${id}`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } else if (action === "Completed") {
-        await axios.put(
-          `http://localhost:5000/api/appointments/complete/${id}`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
+      if (action === "Cancelled") await cancelAppointment(id);
+      if (action === "Confirmed") await confirmAppointment(id);
+      if (action === "Completed") await completeAppointment(id);
 
       toast.success(`Appointment ${action}`);
-      fetchAppointments();
+      loadAppointments();
     } catch {
       toast.error("Action failed");
     } finally {
@@ -146,16 +133,13 @@ export default function AdminAppointments() {
   };
 
   useEffect(() => {
-    const fetchSlots = async () => {
+    const loadSlots = async () => {
       if (!editingAppt || !newDate) return;
       try {
         const dateStr = newDate.toLocaleDateString("en-CA");
-        const res = await axios.get(
-          "http://localhost:5000/api/slots/available",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            params: { doctorId: editingAppt.doctorId?._id, date: dateStr },
-          }
+        const res = await fetchAvailableSlots(
+          editingAppt.doctorId?._id,
+          dateStr
         );
         setAvailableSlots(res.data.slots.filter((s) => !s.isBooked));
         setSelectedSlotId("");
@@ -163,7 +147,7 @@ export default function AdminAppointments() {
         toast.error("Failed to fetch slots");
       }
     };
-    fetchSlots();
+    loadSlots();
   }, [editingAppt, newDate]);
 
   const submitReschedule = async () => {
@@ -173,21 +157,17 @@ export default function AdminAppointments() {
     }
     setLoadingActionId(editingAppt._id + "Reschedule");
     try {
-      await axios.put(
-        `http://localhost:5000/api/appointments/reschedule/${editingAppt._id}`,
-        {
-          newSlotId: selectedSlotId,
-          newDate: newDate.toLocaleDateString("en-CA"),
-          newStartTime: newStart,
-          newEndTime: newEnd,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await rescheduleAppointment(editingAppt._id, {
+        newSlotId: selectedSlotId,
+        newDate: newDate.toLocaleDateString("en-CA"),
+        newStartTime: newStart,
+        newEndTime: newEnd,
+      });
       toast.success("Rescheduled successfully");
       setEditingAppt(null);
       setSelectedSlotId("");
       setAvailableSlots([]);
-      fetchAppointments();
+      loadAppointments();
     } catch {
       toast.error("Reschedule failed");
     } finally {
@@ -199,11 +179,9 @@ export default function AdminAppointments() {
     if (!window.confirm("Delete appointment?")) return;
     setLoadingActionId(id + "Delete");
     try {
-      await axios.delete(`http://localhost:5000/api/appointments/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await deleteAppointment(id);
       toast.success("Deleted");
-      fetchAppointments();
+      loadAppointments();
     } catch {
       toast.error("Delete failed");
     } finally {

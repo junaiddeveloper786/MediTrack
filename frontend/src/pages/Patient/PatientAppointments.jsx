@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { toast } from "react-toastify";
+import {
+  fetchPatientAppointments,
+  cancelPatientAppointment,
+} from "../../services/appointmentService";
 
 // Helper function to format time in "hh:mm AM/PM"
 function formatTime(dateStr) {
@@ -31,16 +34,12 @@ export default function PatientAppointments() {
       return;
     }
 
-    const fetchAppointments = async () => {
+    const loadAppointments = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(
-          `http://localhost:5000/api/appointments?patientId=${userId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await fetchPatientAppointments(token, userId);
         setAppointments(res.data.appointments || []);
       } catch (err) {
-        console.error("fetchAppointments error:", err.response || err.message);
         toast.error(
           err.response?.data?.message || "Failed to load appointments"
         );
@@ -49,7 +48,7 @@ export default function PatientAppointments() {
       }
     };
 
-    fetchAppointments();
+    loadAppointments();
   }, [userId, token]);
 
   const handleCancel = async (appointmentId) => {
@@ -57,14 +56,8 @@ export default function PatientAppointments() {
       return;
 
     setCancellingId(appointmentId);
-
     try {
-      await axios.put(
-        `http://localhost:5000/api/appointments/cancel/${appointmentId}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      await cancelPatientAppointment(token, appointmentId);
       toast.success("Appointment cancelled successfully");
       setAppointments((prev) =>
         prev.map((appt) =>
@@ -72,7 +65,6 @@ export default function PatientAppointments() {
         )
       );
     } catch (err) {
-      console.error("Cancel appointment error:", err.response || err.message);
       toast.error(
         err.response?.data?.message || "Failed to cancel appointment"
       );

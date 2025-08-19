@@ -1,5 +1,5 @@
+// src/pages/patient/PatientDashboard.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import {
@@ -8,40 +8,48 @@ import {
   FaCheckCircle,
   FaTimesCircle,
 } from "react-icons/fa";
+import {
+  fetchPatientStats,
+  fetchRecentAppointments,
+} from "../../services/dashboardService";
 
-function PatientDashboard() {
+// Helper function to format time in "hh:mm AM/PM"
+const formatTime = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  return `${hours}:${minutes} ${ampm}`;
+};
+
+export default function PatientDashboard() {
   const [stats, setStats] = useState({});
   const [recentAppointments, setRecentAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
-
-  const fetchDashboardData = async () => {
+  const loadDashboard = async () => {
     try {
       const [statsRes, recentRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/patient/dashboard/stats", {
-          headers,
-        }),
-        axios.get("http://localhost:5000/api/patient/dashboard/recent", {
-          headers,
-        }),
+        fetchPatientStats(),
+        fetchRecentAppointments(),
       ]);
-      setStats(statsRes.data);
-      setRecentAppointments(recentRes.data);
+      setStats(statsRes.data || {});
+      setRecentAppointments(recentRes.data || []);
     } catch (err) {
-      console.error("Failed to load patient dashboard data", err);
+      console.error("Failed to load dashboard data", err);
     }
   };
 
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 5000);
+    loadDashboard();
+    const interval = setInterval(loadDashboard, 5000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="font-sans bg-[#f3f6fc]">
+    <div className="font-sans bg-[#f3f6fc] p-4 md:p-6 max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold mb-8 text-gray-800">My Dashboard</h1>
 
       {/* KPI Cards */}
@@ -84,6 +92,7 @@ function PatientDashboard() {
             className="w-full border-none rounded-lg shadow-lg overflow-hidden"
           />
         </div>
+
         <div className="bg-white shadow-lg rounded-xl p-5">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">
             Recent Appointments
@@ -103,16 +112,6 @@ function PatientDashboard() {
                   recentAppointments.map((a, i) => {
                     const start = new Date(a.startTime);
                     const end = new Date(a.endTime);
-                    const formatTime = (date) => {
-                      let hours = date.getHours();
-                      const minutes = String(date.getMinutes()).padStart(
-                        2,
-                        "0"
-                      );
-                      const ampm = hours >= 12 ? "PM" : "AM";
-                      hours = hours % 12 || 12;
-                      return `${hours}:${minutes} ${ampm}`;
-                    };
                     const day = start.toLocaleDateString("en-US", {
                       weekday: "long",
                     });
@@ -181,5 +180,3 @@ function KPI({ icon, label, value, color }) {
     </div>
   );
 }
-
-export default PatientDashboard;

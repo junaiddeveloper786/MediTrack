@@ -1,30 +1,24 @@
 // src/pages/Admin/AdminDashboard.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { FaUserMd, FaUsers, FaCalendarAlt, FaChartLine } from "react-icons/fa";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import {
+  fetchDashboardStats,
+  fetchRecentAppointments,
+} from "../../services/adminService";
 
-function AdminDashboard() {
+export default function AdminDashboard() {
   const [stats, setStats] = useState({});
   const [recentAppointments, setRecentAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
-
-  const fetchDashboardData = async () => {
+  const loadDashboardData = async () => {
     try {
       const [statsRes, recentRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/admin/dashboard/stats", {
-          headers,
-        }),
-        axios.get(
-          "http://localhost:5000/api/admin/dashboard/appointments/recent",
-          { headers }
-        ),
+        fetchDashboardStats(),
+        fetchRecentAppointments(),
       ]);
-
       setStats(statsRes.data);
       setRecentAppointments(recentRes.data);
     } catch (err) {
@@ -33,8 +27,8 @@ function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 5000);
+    loadDashboardData();
+    const interval = setInterval(loadDashboardData, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -174,5 +168,3 @@ function KPI({ icon, label, value, color }) {
     </div>
   );
 }
-
-export default AdminDashboard;

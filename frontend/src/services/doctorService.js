@@ -1,17 +1,7 @@
-// import axios from "axios";
+// src/services/doctorService.js
+import API from "./api";
 
-// const API = "http://localhost:5000/api/doctors";
-
-// export const fetchDoctors = () => axios.get(API);
-// export const addDoctor = (data) => axios.post(API, data);
-// export const updateDoctor = (id, data) => axios.put(`${API}/${id}`, data);
-// export const deleteDoctor = (id) => axios.delete(`${API}/${id}`);
-
-import axios from "axios";
-
-const API = `${process.env.REACT_APP_API_URL}/doctors`;
-
-export const fetchDoctors = () => axios.get(API);
-export const addDoctor = (data) => axios.post(API, data);
-export const updateDoctor = (id, data) => axios.put(`${API}/${id}`, data);
-export const deleteDoctor = (id) => axios.delete(`${API}/${id}`);
+export const fetchDoctors = () => API.get("/doctors");
+export const addDoctor = (data) => API.post("/doctors", data);
+export const updateDoctor = (id, data) => API.put(`/doctors/${id}`, data);
+export const deleteDoctor = (id) => API.delete(`/doctors/${id}`);

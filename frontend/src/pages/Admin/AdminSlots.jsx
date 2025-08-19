@@ -1,14 +1,24 @@
+// src/pages/Admin/AdminSlots.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import {
+  fetchSlots as fetchSlotsService,
+  createSlots as createSlotsService,
+  updateSlot as updateSlotService,
+  deleteSlot as deleteSlotService,
+  fetchDoctors as fetchDoctorsService,
+} from "../../services/slotService";
+
 export default function AdminSlots() {
   const [doctors, setDoctors] = useState([]);
   const [slots, setSlots] = useState([]);
   const [editingSlotId, setEditingSlotId] = useState(null);
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editEndTime, setEditEndTime] = useState("");
   const [editSlotDate, setEditSlotDate] = useState("");
 
   const [doctorId, setDoctorId] = useState("");
@@ -18,9 +28,6 @@ export default function AdminSlots() {
   const [endTime, setEndTime] = useState("");
   const [slotDuration, setSlotDuration] = useState(15);
 
-  const [editStartTime, setEditStartTime] = useState("");
-  const [editEndTime, setEditEndTime] = useState("");
-
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterFrom, setFilterFrom] = useState(null);
   const [filterTo, setFilterTo] = useState(null);
@@ -29,32 +36,24 @@ export default function AdminSlots() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetchDoctors();
-    fetchSlots();
+    loadDoctors();
+    loadSlots();
   }, []);
 
-  const fetchDoctors = async () => {
+  const loadDoctors = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/doctors");
-      setDoctors(res.data?.doctors || []);
+      const res = await fetchDoctorsService();
+      console.log("Doctors API response:", res.data);
+      setDoctors(res.data || []);
     } catch (err) {
       console.error(err);
       toast.error("Failed to fetch doctors");
     }
   };
 
-  const fetchSlots = async (opts = {}) => {
+  const loadSlots = async (filters = {}) => {
     try {
-      let url = "http://localhost:5000/api/slots";
-      const params = new URLSearchParams();
-      if (opts.doctorId) params.append("doctorId", opts.doctorId);
-      if (opts.fromDate && opts.toDate) {
-        params.append("fromDate", opts.fromDate.toISOString());
-        params.append("toDate", opts.toDate.toISOString());
-      }
-      if (params.toString()) url += `?${params.toString()}`;
-
-      const res = await axios.get(url);
+      const res = await fetchSlotsService(filters);
       setSlots(res.data?.slots || []);
       setCurrentPage(1);
     } catch (err) {
@@ -84,10 +83,10 @@ export default function AdminSlots() {
         endTime,
         slotDuration,
       };
-      const res = await axios.post("http://localhost:5000/api/slots", body);
+      const res = await createSlotsService(body);
       if (res.data.success) {
         toast.success("Slots created");
-        fetchSlots({
+        loadSlots({
           doctorId: filterDoctor || undefined,
           fromDate: filterFrom,
           toDate: filterTo,
@@ -110,35 +109,31 @@ export default function AdminSlots() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this slot?")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/slots/${id}`);
+      await deleteSlotService(id);
       toast.success("Deleted");
-      fetchSlots({
+      loadSlots({
         doctorId: filterDoctor || undefined,
         fromDate: filterFrom,
         toDate: filterTo,
       });
     } catch (err) {
       console.error(err);
-      toast.error("Failed to delete");
+      toast.error("Failed to delete slot");
     }
   };
 
-  const handleUpdate = async (id, slotDate) => {
-    if (!editStartTime || !editEndTime)
-      return toast.error("Start and End times required");
+  const handleUpdate = async (id) => {
+    if (!editStartTime || !editEndTime || !editSlotDate)
+      return toast.error("All fields required");
 
     try {
-      const [year, month, day] = slotDate.split("-").map(Number);
-      const [sh, sm] = editStartTime.split(":").map(Number);
-      const [eh, em] = editEndTime.split(":").map(Number);
-
-      const startDateTime = new Date(year, month - 1, day, sh, sm);
-      const endDateTime = new Date(year, month - 1, day, eh, em);
+      const startDateTime = new Date(`${editSlotDate}T${editStartTime}:00`);
+      const endDateTime = new Date(`${editSlotDate}T${editEndTime}:00`);
 
       if (isNaN(startDateTime) || isNaN(endDateTime))
         return toast.error("Invalid date/time");
 
-      const res = await axios.put(`http://localhost:5000/api/slots/${id}`, {
+      const res = await updateSlotService(id, {
         startTime: startDateTime.toISOString(),
         endTime: endDateTime.toISOString(),
       });
@@ -146,7 +141,7 @@ export default function AdminSlots() {
       if (res.data.success) {
         toast.success("Slot updated");
         setEditingSlotId(null);
-        fetchSlots({
+        loadSlots({
           doctorId: filterDoctor || undefined,
           fromDate: filterFrom,
           toDate: filterTo,
@@ -161,7 +156,7 @@ export default function AdminSlots() {
   };
 
   const applyFilter = () => {
-    fetchSlots({
+    loadSlots({
       doctorId: filterDoctor || undefined,
       fromDate: filterFrom,
       toDate: filterTo,
@@ -171,7 +166,6 @@ export default function AdminSlots() {
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentSlots = slots.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(slots.length / itemsPerPage);
 
   return (
     <div className="p-4 md:p-6 w-full">
@@ -267,7 +261,7 @@ export default function AdminSlots() {
               setToDate(null);
               setStartTime("");
               setEndTime("");
-              setSlotDuration(30);
+              setSlotDuration(15);
             }}
             className="bg-gray-300 px-6 py-2 rounded hover:bg-gray-400 transition"
           >
@@ -322,7 +316,7 @@ export default function AdminSlots() {
               setFilterDoctor("");
               setFilterFrom(null);
               setFilterTo(null);
-              fetchSlots();
+              loadSlots();
             }}
             className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 transition"
           >
@@ -337,7 +331,7 @@ export default function AdminSlots() {
           <thead>
             <tr className="bg-gray-100">
               <th className="p-2 text-left">Doctor</th>
-              <th className="p-2 text-left">Specialty</th> {/* New Column */}
+              <th className="p-2 text-left">Specialty</th>
               <th className="p-2 text-left">Day</th>
               <th className="p-2 text-left">Date</th>
               <th className="p-2 text-left">Time</th>
@@ -354,25 +348,16 @@ export default function AdminSlots() {
             ) : (
               currentSlots.map((slot) => (
                 <tr key={slot._id} className="border-t">
-                  {/* Doctor */}
                   <td className="p-2 align-middle">
                     {slot.doctorId?.name || "N/A"}
                   </td>
-
-                  {/* Specialty */}
                   <td className="p-2 align-middle">
                     {slot.doctorId?.specialty || "N/A"}
                   </td>
-
-                  {/* Day */}
                   <td className="p-2 align-middle">{slot.day}</td>
-
-                  {/* Date */}
                   <td className="p-2 align-middle">
                     {new Date(slot.date).toLocaleDateString("en-GB")}
                   </td>
-
-                  {/* Time */}
                   <td className="p-2 align-middle">
                     {editingSlotId === slot._id ? (
                       <div className="flex gap-1">
@@ -391,32 +376,27 @@ export default function AdminSlots() {
                       </div>
                     ) : (
                       (() => {
-                        try {
-                          const start = new Date(slot.startTime);
-                          const end = new Date(slot.endTime);
-                          if (isNaN(start) || isNaN(end)) return "Invalid Time";
-                          return `${start.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })} - ${end.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}`;
-                        } catch {
-                          return "Invalid Time";
-                        }
+                        const start = new Date(slot.startTime);
+                        const end = new Date(slot.endTime);
+                        return isNaN(start) || isNaN(end)
+                          ? "Invalid Time"
+                          : `${start.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })} - ${end.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })}`;
                       })()
                     )}
                   </td>
-
-                  {/* Action */}
                   <td className="p-2 align-middle flex gap-2">
                     {editingSlotId === slot._id ? (
                       <>
                         <button
-                          onClick={() => handleUpdate(slot._id, editSlotDate)}
+                          onClick={() => handleUpdate(slot._id)}
                           className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition"
                         >
                           Save
