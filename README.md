@@ -153,15 +153,6 @@ npm start
 
 ---
 
-## 👨‍💻 Team Members
-
-- Mohammed Junaid – Fullstack Developer
-- Abhishek Tumane – Fullstack Developer
-- Kapil Salunkhe – Fullstack Developer
-- Pooja Belenkar – Fullstack Developer
-
----
-
 ## 📚 Challenges & Learnings
 
 - Implementing real-time appointment updates on dashboard
