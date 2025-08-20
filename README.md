@@ -2,46 +2,179 @@
 
 **Company:** MedSoft Solutions Pvt. Ltd.  
 **Client:** Sunrise Multi-Speciality Clinics, Pune  
-**Type:** B2B SaaS Web Application
+**Project Type:** B2B SaaS Web Application
 
-## 🔍 Overview
+---
 
-MediTrack is a full-stack SaaS platform for managing clinic operations, including doctor scheduling, appointment booking, and real-time tracking via a unified dashboard.
+## **Project Overview**
 
-## 🚀 Features
+MediTrack is a web-based SaaS platform designed to simplify clinic operations for Sunrise Multi-Speciality Clinics.  
+It provides role-based access for Admins and Patients, supports doctor scheduling, appointment management, email reminders, data reporting, and real-time appointment tracking through a unified dashboard.
 
-### Admin
+---
 
-- JWT-secured login
-- Dashboard: KPIs for doctors, appointments, patients
-- CRUD for doctors (with specialty & availability)
-- Approve/Cancel/Reschedule appointments
-- Export appointments to CSV
-- Email/SMS alerts for bookings
+## **User Roles & Permissions**
 
-### Patient
+### Admin (Clinic Manager)
 
-- Register/Login with JWT
-- Book appointment (date, time, doctor)
-- View appointment history & profile
-- Email confirmation & reminders
+- Secure login using JWT
+- Admin dashboard with KPIs: Total Doctors, Appointments, Patients
+- Add/Edit/Delete doctors with specialty & availability
+- View/manage appointments (Approve, Cancel, Reschedule)
+- Export appointment reports (CSV)
+- Trigger email/SMS alerts for booking events
 
-## 🛠 Tech Stack
+### Patient (User)
 
-| Layer      | Technology                            |
-| ---------- | ------------------------------------- |
-| Frontend   | React.js, Redux Toolkit, Tailwind CSS |
-| Backend    | Node.js, Express.js                   |
-| Database   | MongoDB Atlas                         |
-| Auth       | JWT, Bcrypt.js                        |
-| Email/SMS  | Nodemailer, (optional) Twilio         |
-| Deployment | Netlify (Frontend), Render (Backend)  |
+- Register/Login using JWT
+- Book appointments with date, time, and preferred doctor
+- View appointment history and upcoming schedule
+- Edit personal profile and contact details
+- Receive confirmation/reminder emails
 
-## 🧱 Folder Structure
+---
 
-### Backend
+## **Technology Stack**
 
-```
+| Category       | Tools & Technologies                   |
+| -------------- | -------------------------------------- |
+| Frontend       | React.js, Redux, React Router, Axios   |
+| Styling        | Tailwind CSS and Material UI           |
+| Backend        | Node.js, Express.js, MongoDB, Mongoose |
+| Notifications  | Nodemailer (email) and Twilio (SMS)    |
+| Tools          | Postman, Git, GitHub, Netlify, Render  |
+| Authentication | JWT and Bcrypt.js                      |
+| Calendar       | React-Calendar                         |
+
+---
+
+## **Deployment Links**
+
+- **Frontend:** [https://medeetrack.netlify.app/](https://medeetrack.netlify.app/)
+- **Backend:** [https://meditrack-bypw.onrender.com](https://meditrack-bypw.onrender.com)
+
+---
+
+## **Screenshots**
+
+### MediTrack – Clinic & Appointment Management System
+
+> ![MediTrack](<figma design.png>)
+
+---
+
+## **Setup Instructions**
+
+### **Prerequisites**
+
+- **Node.js:** v20.15.0
+- **NPM:** 10.8.1
+- **MongoDB:** 8.0 ( Atlas )
+- **Environment Variables:**
+
+  - `MONGO_URI`
+  - `JWT_SECRET`
+  - `EMAIL_USER`
+  - `EMAIL_PASS`
+
+### **Backend Setup**
+
+````bash
+cd backend
+npm install
+npm start
+
+   **Frontend Setup**
+
+```bash
+cd frontend
+npm install
+npm start
+
+---
+
+API Endpoints (Basic Reference)
+
+| Method | Endpoint               | Description                            |
+| ------ | ---------------------- | -------------------------------------- |
+| POST   | /api/users/register    | Register a new user                    |
+| POST   | /api/users/login       | Login user                             |
+| GET    | /api/doctors           | Get all doctors                        |
+| POST   | /api/doctors           | Add a doctor (Admin only)              |
+| PUT    | /api/doctors/\:id      | Update doctor details                  |
+| DELETE | /api/doctors/\:id      | Delete doctor                          |
+| GET    | /api/appointments      | Get appointments                       |
+| POST   | /api/appointments      | Book an appointment                    |
+| PUT    | /api/appointments/\:id | Update appointment (reschedule/cancel) |
+
+---
+
+Features
+
+Role-based access (Admin & Patient)
+
+Doctor management (CRUD & slot scheduling)
+
+Appointment booking, rescheduling, cancellation
+
+Email notifications via Nodemailer
+
+Admin dashboard with KPIs and reports
+
+Redux Toolkit for global state management
+
+Calendar-based appointment slot visualization
+
+---
+
+Future Enhancements:
+
+🤖 AI Chat Assistant for patient queries & suggestions
+
+🎥 Video Call Integration for online consultation
+
+🌐 Multi-language Support (English, Hindi, Marathi)
+
+💳 Payment Gateway Integration (Razorpay/Stripe)
+
+📄 E-Prescription Generation
+
+🏥 Role Extensions (Receptionist, Nurse)
+
+📊 Advanced Analytics Dashboard (Revenue, Trends)
+
+📱 Push Notifications & PWA Support
+
+---
+
+Team Members
+
+Mohammed Junaid – Fullstack Developer
+
+Abhishek Tumane – Fullstack Developer
+
+Kapil Salunkhe – Fullstack Developer
+
+Pooja Belenkar – Fullstack Developer
+
+---
+
+Challenges & Learnings
+
+Implementing real-time appointment updates on dashboard
+
+Integrating Redux Toolkit with multiple modules
+
+Automating email reminders for appointments
+
+Future focus: AI-based assistant and video consultation
+
+---
+
+Folder Structure
+
+Backend
+
 backend/
 ├── config/
 ├── controllers/
@@ -50,44 +183,24 @@ backend/
 ├── routes/
 ├── utils/
 └── server.js
-```
 
-### Frontend
+Frontend
 
-```
 frontend/
 ├── components/
+├── layouts/
 ├── pages/
 ├── redux/
 ├── services/
-├── App.js
+├── utils.js
+├── App.jsx
 └── index.js
-```
 
-## 🧪 How to Run
+---
 
-### Backend
-
-```bash
-cd backend
-npm install
-npm run start
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run start
-```
-
-## 📦 Deployment
-
-- Frontend: [Netlify](https://netlify.com)
-- Backend: [Render](https://render.com)
-- Database: [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-
-## 📄 License
+ 📄 License
 
 © 2025 MedSoft Solutions Pvt. Ltd.
+This project is licensed for Sunrise Multi-Speciality Clinics use only.
+
+````
