@@ -6,14 +6,32 @@
 
 ---
 
-## **Project Overview**
+## 📑 Table of Contents
+
+1. [Project Overview](#-project-overview)
+2. [User Roles & Permissions](#-user-roles--permissions)
+3. [Technology Stack](#-technology-stack)
+4. [Deployment Links](#-deployment-links)
+5. [Screenshots](#-screenshots)
+6. [Setup Instructions](#️-setup-instructions)
+7. [API Endpoints](#-api-endpoints-basic-reference)
+8. [Features](#-features)
+9. [Future Enhancements](#-future-enhancements)
+10. [Team Members](#-team-members)
+11. [Challenges & Learnings](#-challenges--learnings)
+12. [Folder Structure](#-folder-structure)
+13. [License](#-license)
+
+---
+
+## 📖 Project Overview
 
 MediTrack is a web-based SaaS platform designed to simplify clinic operations for Sunrise Multi-Speciality Clinics.  
 It provides role-based access for Admins and Patients, supports doctor scheduling, appointment management, email reminders, data reporting, and real-time appointment tracking through a unified dashboard.
 
 ---
 
-## **User Roles & Permissions**
+## 👥 User Roles & Permissions
 
 ### Admin (Clinic Manager)
 
@@ -34,7 +52,7 @@ It provides role-based access for Admins and Patients, supports doctor schedulin
 
 ---
 
-## **Technology Stack**
+## 🛠 Technology Stack
 
 | Category       | Tools & Technologies                   |
 | -------------- | -------------------------------------- |
@@ -48,133 +66,116 @@ It provides role-based access for Admins and Patients, supports doctor schedulin
 
 ---
 
-## **Deployment Links**
+## 🌐 Deployment Links
 
 - **Frontend:** [https://medeetrack.netlify.app/](https://medeetrack.netlify.app/)
 - **Backend:** [https://meditrack-bypw.onrender.com](https://meditrack-bypw.onrender.com)
 
 ---
 
-## **Screenshots**
-
-### MediTrack – Clinic & Appointment Management System
+## 🖼 Screenshots
 
 > ![MediTrack](<figma design.png>)
 
 ---
 
-## **Setup Instructions**
+## ⚙️ Setup Instructions
 
-### **Prerequisites**
+### Prerequisites
 
 - **Node.js:** v20.15.0
 - **NPM:** 10.8.1
 - **MongoDB:** 8.0 ( Atlas )
-- **Environment Variables:**
 
-  - `MONGO_URI`
-  - `JWT_SECRET`
-  - `EMAIL_USER`
-  - `EMAIL_PASS`
+**Environment Variables:**
 
-### **Backend Setup**
+- `MONGO_URI`
+- `JWT_SECRET`
+- `EMAIL_USER`
+- `EMAIL_PASS`
 
-````bash
+### Backend Setup
+
+```bash
 cd backend
 npm install
 npm start
+```
 
-   **Frontend Setup**
+### Frontend Setup
 
 ```bash
 cd frontend
 npm install
 npm start
+```
 
 ---
 
-API Endpoints (Basic Reference)
+## 📌 API Endpoints (Basic Reference)
 
-| Method | Endpoint               | Description                            |
-| ------ | ---------------------- | -------------------------------------- |
-| POST   | /api/users/register    | Register a new user                    |
-| POST   | /api/users/login       | Login user                             |
-| GET    | /api/doctors           | Get all doctors                        |
-| POST   | /api/doctors           | Add a doctor (Admin only)              |
-| PUT    | /api/doctors/\:id      | Update doctor details                  |
-| DELETE | /api/doctors/\:id      | Delete doctor                          |
-| GET    | /api/appointments      | Get appointments                       |
-| POST   | /api/appointments      | Book an appointment                    |
-| PUT    | /api/appointments/\:id | Update appointment (reschedule/cancel) |
-
----
-
-Features
-
-Role-based access (Admin & Patient)
-
-Doctor management (CRUD & slot scheduling)
-
-Appointment booking, rescheduling, cancellation
-
-Email notifications via Nodemailer
-
-Admin dashboard with KPIs and reports
-
-Redux Toolkit for global state management
-
-Calendar-based appointment slot visualization
+| Method | Endpoint              | Description                            |
+| ------ | --------------------- | -------------------------------------- |
+| POST   | /api/users/register   | Register a new user                    |
+| POST   | /api/users/login      | Login user                             |
+| GET    | /api/doctors          | Get all doctors                        |
+| POST   | /api/doctors          | Add a doctor (Admin only)              |
+| PUT    | /api/doctors/:id      | Update doctor details                  |
+| DELETE | /api/doctors/:id      | Delete doctor                          |
+| GET    | /api/appointments     | Get appointments                       |
+| POST   | /api/appointments     | Book an appointment                    |
+| PUT    | /api/appointments/:id | Update appointment (reschedule/cancel) |
 
 ---
 
-Future Enhancements:
+## ✨ Features
 
-🤖 AI Chat Assistant for patient queries & suggestions
-
-🎥 Video Call Integration for online consultation
-
-🌐 Multi-language Support (English, Hindi, Marathi)
-
-💳 Payment Gateway Integration (Razorpay/Stripe)
-
-📄 E-Prescription Generation
-
-🏥 Role Extensions (Receptionist, Nurse)
-
-📊 Advanced Analytics Dashboard (Revenue, Trends)
-
-📱 Push Notifications & PWA Support
+- Role-based access (Admin & Patient)
+- Doctor management (CRUD & slot scheduling)
+- Appointment booking, rescheduling, cancellation
+- Email notifications via Nodemailer
+- Admin dashboard with KPIs and reports
+- Redux Toolkit for global state management
+- Calendar-based appointment slot visualization
 
 ---
 
-Team Members
+## 🔮 Future Enhancements
 
-Mohammed Junaid – Fullstack Developer
-
-Abhishek Tumane – Fullstack Developer
-
-Kapil Salunkhe – Fullstack Developer
-
-Pooja Belenkar – Fullstack Developer
-
----
-
-Challenges & Learnings
-
-Implementing real-time appointment updates on dashboard
-
-Integrating Redux Toolkit with multiple modules
-
-Automating email reminders for appointments
-
-Future focus: AI-based assistant and video consultation
+- 🤖 AI Chat Assistant for patient queries & suggestions
+- 🎥 Video Call Integration for online consultation
+- 🌐 Multi-language Support (English, Hindi, Marathi)
+- 💳 Payment Gateway Integration (Razorpay/Stripe)
+- 📄 E-Prescription Generation
+- 🏥 Role Extensions (Receptionist, Nurse)
+- 📊 Advanced Analytics Dashboard (Revenue, Trends)
+- 📱 Push Notifications & PWA Support
 
 ---
 
-Folder Structure
+## 👨‍💻 Team Members
 
-Backend
+- Mohammed Junaid – Fullstack Developer
+- Abhishek Tumane – Fullstack Developer
+- Kapil Salunkhe – Fullstack Developer
+- Pooja Belenkar – Fullstack Developer
 
+---
+
+## 📚 Challenges & Learnings
+
+- Implementing real-time appointment updates on dashboard
+- Integrating Redux Toolkit with multiple modules
+- Automating email reminders for appointments
+- Future focus: AI-based assistant and video consultation
+
+---
+
+## 📂 Folder Structure
+
+### Backend
+
+```
 backend/
 ├── config/
 ├── controllers/
@@ -183,9 +184,11 @@ backend/
 ├── routes/
 ├── utils/
 └── server.js
+```
 
-Frontend
+### Frontend
 
+```
 frontend/
 ├── components/
 ├── layouts/
@@ -195,12 +198,11 @@ frontend/
 ├── utils.js
 ├── App.jsx
 └── index.js
+```
 
 ---
 
- 📄 License
+## 📄 License
 
-© 2025 MedSoft Solutions Pvt. Ltd.
-This project is licensed for Sunrise Multi-Speciality Clinics use only.
-
-````
+© 2025 MedSoft Solutions Pvt. Ltd.  
+This project is licensed for **Sunrise Multi-Speciality Clinics** use only.
