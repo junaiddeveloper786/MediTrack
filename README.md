@@ -17,10 +17,9 @@
 7. [API Endpoints](#-api-endpoints-basic-reference)
 8. [Features](#-features)
 9. [Future Enhancements](#-future-enhancements)
-10. [Team Members](#-team-members)
-11. [Challenges & Learnings](#-challenges--learnings)
-12. [Folder Structure](#-folder-structure)
-13. [License](#-license)
+10. [Challenges & Learnings](#-challenges--learnings)
+11. [Folder Structure](#-folder-structure)
+12. [License](#-license)
 
 ---
 
