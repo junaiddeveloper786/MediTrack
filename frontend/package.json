@@ -12,6 +12,7 @@
     "@reduxjs/toolkit": "^2.8.2",
     "autoprefixer": "^10.4.16",
     "axios": "^1.11.0",
+    "date-fns-tz": "^3.2.0",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.25",
     "lucide-react": "^0.536.0",

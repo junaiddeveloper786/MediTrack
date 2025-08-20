@@ -1,4 +1,3 @@
-// src/pages/patient/BookAppointment.jsx
 import React, { useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
@@ -9,6 +8,31 @@ import {
   fetchAvailableSlots,
   bookAppointment,
 } from "../../services/appointmentService";
+
+function formatTime(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function getWeekdayName(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString([], { weekday: "long" });
+}
 
 export default function BookAppointment() {
   const [doctors, setDoctors] = useState([]);
@@ -25,6 +49,12 @@ export default function BookAppointment() {
     loadDoctors();
   }, []);
 
+  useEffect(() => {
+    if (selectedDoctor && selectedDate) {
+      loadSlots();
+    }
+  }, [selectedDoctor, selectedDate]); // Refresh slots automatically
+
   const loadDoctors = async () => {
     try {
       const res = await fetchDoctors();
@@ -36,10 +66,7 @@ export default function BookAppointment() {
   };
 
   const loadSlots = async () => {
-    if (!selectedDoctor || !selectedDate) {
-      toast.info("Please select doctor and date");
-      return;
-    }
+    if (!selectedDoctor || !selectedDate) return;
 
     setLoadingSlots(true);
     try {
@@ -119,13 +146,6 @@ export default function BookAppointment() {
             onChange={(d) => setSelectedDate(d)}
             minDate={new Date()}
           />
-
-          <button
-            onClick={loadSlots}
-            className="mt-4 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-          >
-            {loadingSlots ? "Loading..." : "Check Slots"}
-          </button>
         </div>
 
         {/* Right Side */}
@@ -145,25 +165,12 @@ export default function BookAppointment() {
           ) : (
             <div className="space-y-2">
               {slots.map((slot) => {
-                const slotDate = new Date(slot.date);
-                const dayName = slotDate.toLocaleDateString("en-US", {
-                  weekday: "long",
-                });
-                const dateStr = slotDate.toLocaleDateString("en-GB");
+                const slotDate = slot.date || slot.startTime;
+                const dayName = getWeekdayName(slotDate);
+                const dateStr = formatDate(slotDate);
 
-                const startTime = new Date(slot.startTime);
-                const endTime = new Date(slot.endTime);
-
-                const startTimeStr = startTime.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                });
-                const endTimeStr = endTime.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                });
+                const startTimeStr = formatTime(slot.startTime);
+                const endTimeStr = formatTime(slot.endTime);
 
                 return (
                   <div

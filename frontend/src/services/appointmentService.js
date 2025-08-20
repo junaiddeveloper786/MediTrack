@@ -38,7 +38,9 @@ export const fetchAvailableSlots = (doctorId, date) =>
 export const bookAppointment = (payload) => API.post("/appointments", payload);
 
 // Fetch appointments for the logged-in patient
-export const fetchPatientAppointments = () => API.get("/appointments/patient");
+// Pass patientId as query parameter
+export const fetchPatientAppointments = (patientId) =>
+  API.get("/appointments", { params: { patientId } });
 
 // Cancel a patient appointment
 export const cancelPatientAppointment = (appointmentId) =>

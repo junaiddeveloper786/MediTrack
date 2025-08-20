@@ -36,8 +36,28 @@ export default function AdminSlots() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    loadDoctors();
-    loadSlots();
+    const init = async () => {
+      try {
+        const doctorsRes = await fetchDoctorsService();
+        const doctorsData = doctorsRes.data || [];
+        setDoctors(doctorsData);
+
+        const slotsRes = await fetchSlotsService();
+        const enhancedSlots = slotsRes.data.slots.map((slot) => {
+          const doctor = doctorsData.find((d) => d._id === slot.doctorId._id);
+          return {
+            ...slot,
+            doctorName: slot.doctorId.name,
+            specialty: doctor ? doctor.specialty : "",
+          };
+        });
+        setSlots(enhancedSlots);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load doctors or slots");
+      }
+    };
+    init();
   }, []);
 
   const loadDoctors = async () => {
@@ -54,7 +74,17 @@ export default function AdminSlots() {
   const loadSlots = async (filters = {}) => {
     try {
       const res = await fetchSlotsService(filters);
-      setSlots(res.data?.slots || []);
+
+      const enhancedSlots = res.data.slots.map((slot) => {
+        const doctor = doctors.find((d) => d._id === slot.doctorId._id);
+        return {
+          ...slot,
+          doctorName: slot.doctorId.name,
+          specialty: doctor ? doctor.specialty : "",
+        };
+      });
+
+      setSlots(enhancedSlots);
       setCurrentPage(1);
     } catch (err) {
       console.error(err);
@@ -349,10 +379,10 @@ export default function AdminSlots() {
               currentSlots.map((slot) => (
                 <tr key={slot._id} className="border-t">
                   <td className="p-2 align-middle">
-                    {slot.doctorId?.name || "N/A"}
+                    {slot.doctorName || "N/A"}
                   </td>
                   <td className="p-2 align-middle">
-                    {slot.doctorId?.specialty || "N/A"}
+                    {slot.specialty || "N/A"}
                   </td>
                   <td className="p-2 align-middle">{slot.day}</td>
                   <td className="p-2 align-middle">

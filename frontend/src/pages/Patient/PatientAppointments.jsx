@@ -5,17 +5,32 @@ import {
   cancelPatientAppointment,
 } from "../../services/appointmentService";
 
-// Helper function to format time in "hh:mm AM/PM"
+// Helper function to format time in "hh:mm AM/PM" using local timezone
 function formatTime(dateStr) {
   if (!dateStr) return "";
   const date = new Date(dateStr);
-  let hours = date.getHours();
-  const minutes = date.getMinutes();
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12;
-  return `${hours.toString().padStart(2, "0")}:${minutes
-    .toString()
-    .padStart(2, "0")} ${ampm}`;
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+// Helper function to format date as DD/MM/YYYY
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+// Helper function to get weekday name
+function getWeekdayName(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString([], { weekday: "long" });
 }
 
 export default function PatientAppointments() {
@@ -23,7 +38,6 @@ export default function PatientAppointments() {
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState(null);
 
-  const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const userId = user?._id || user?.id || null;
 
@@ -37,9 +51,13 @@ export default function PatientAppointments() {
     const loadAppointments = async () => {
       setLoading(true);
       try {
-        const res = await fetchPatientAppointments(token, userId);
-        setAppointments(res.data.appointments || []);
+        const res = await fetchPatientAppointments(userId);
+        const apptsArray = Array.isArray(res.data)
+          ? res.data
+          : res.data.appointments || [];
+        setAppointments(apptsArray);
       } catch (err) {
+        console.error("Load appointments error:", err.response || err.message);
         toast.error(
           err.response?.data?.message || "Failed to load appointments"
         );
@@ -49,7 +67,7 @@ export default function PatientAppointments() {
     };
 
     loadAppointments();
-  }, [userId, token]);
+  }, [userId]);
 
   const handleCancel = async (appointmentId) => {
     if (!window.confirm("Are you sure you want to cancel this appointment?"))
@@ -57,7 +75,7 @@ export default function PatientAppointments() {
 
     setCancellingId(appointmentId);
     try {
-      await cancelPatientAppointment(token, appointmentId);
+      await cancelPatientAppointment(appointmentId);
       toast.success("Appointment cancelled successfully");
       setAppointments((prev) =>
         prev.map((appt) =>
@@ -65,6 +83,7 @@ export default function PatientAppointments() {
         )
       );
     } catch (err) {
+      console.error("Cancel appointment error:", err.response || err.message);
       toast.error(
         err.response?.data?.message || "Failed to cancel appointment"
       );
@@ -82,7 +101,7 @@ export default function PatientAppointments() {
         My Appointments
       </h1>
 
-      {appointments.length === 0 ? (
+      {!Array.isArray(appointments) || appointments.length === 0 ? (
         <p>You have no appointments booked.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -99,18 +118,11 @@ export default function PatientAppointments() {
             </thead>
             <tbody>
               {appointments.map((appt) => {
-                const apptStart = new Date(appt.startTime);
-                const apptEnd = new Date(appt.endTime);
-                const dayName = apptStart.toLocaleDateString("en-US", {
-                  weekday: "long",
-                });
-                const dateStr = apptStart.toLocaleDateString("en-GB");
-
                 return (
                   <tr key={appt._id} className="border-b">
                     <td className="p-3">{appt.doctorId?.name || "N/A"}</td>
-                    <td className="p-3">{dayName}</td>
-                    <td className="p-3">{dateStr}</td>
+                    <td className="p-3">{getWeekdayName(appt.startTime)}</td>
+                    <td className="p-3">{formatDate(appt.startTime)}</td>
                     <td className="p-3">
                       {formatTime(appt.startTime)} - {formatTime(appt.endTime)}
                     </td>

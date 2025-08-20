@@ -18,49 +18,14 @@ export default function Reports() {
   const [status, setStatus] = useState("All");
   const [search, setSearch] = useState("");
 
-  const fetchReports = async () => {
-    try {
-      setLoading(true);
-      let data;
-      switch (reportType) {
-        case "appointments":
-          data = await fetchAppointmentsReport({ startDate, endDate, status });
-          break;
-        case "patients":
-          data = await fetchPatientsReport({ startDate, endDate, search });
-          break;
-        case "doctors":
-          data = await fetchDoctorsReport({ startDate, endDate, search });
-          break;
-        case "slots":
-          data = await fetchSlotsReport({ startDate, endDate });
-          break;
-        default:
-          data = { data: [] };
-      }
-      // Safely set reportData as array
-      const d = data.data;
-      setReportData(Array.isArray(d) ? d : []);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to fetch reports");
-      setReportData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReports();
-  }, [reportType, search, startDate, endDate, status]);
-
-  // Helpers
+  // -------- Helper Functions --------
   const clean = (v) => (v == null ? "" : String(v));
   const csvEscape = (v) =>
     /[",\n]/.test(clean(v)) ? `"${clean(v).replace(/"/g, '""')}"` : clean(v);
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
+  const formatDate = (dateVal) => {
+    if (!dateVal) return "";
+    const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    if (isNaN(d)) return "";
     return `${String(d.getDate()).padStart(2, "0")}/${String(
       d.getMonth() + 1
     ).padStart(2, "0")}/${d.getFullYear()}`;
@@ -82,8 +47,53 @@ export default function Reports() {
       ? new Date(dateStr).toLocaleDateString("en-US", { weekday: "long" })
       : "";
   const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+  const parseDate = (dateStr) => {
+    if (!dateStr) return null;
+    const [day, month, year] = dateStr.split("/").map(Number);
+    return new Date(year, month - 1, day);
+  };
 
-  // Memoized table data (safe map)
+  // -------- Fetch Reports --------
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      let data;
+      switch (reportType) {
+        case "appointments":
+          data = await fetchAppointmentsReport({ startDate, endDate, status });
+          break;
+        case "patients":
+          data = await fetchPatientsReport({ startDate, endDate, search });
+          break;
+        case "doctors":
+          data = await fetchDoctorsReport({ startDate, endDate, search });
+          break;
+        case "slots":
+          data = await fetchSlotsReport({ startDate, endDate });
+          break;
+        default:
+          data = { data: [] };
+      }
+
+      const backendResponse = data.data;
+      const finalData = Array.isArray(backendResponse)
+        ? backendResponse
+        : backendResponse?.data;
+
+      setReportData(Array.isArray(finalData) ? finalData : []);
+    } catch (err) {
+      toast.error("Failed to fetch reports");
+      setReportData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [reportType, search, startDate, endDate, status]);
+
+  // -------- Memoized Table Data --------
   const tableData = useMemo(() => {
     const dataArray = Array.isArray(reportData) ? reportData : [];
     let headers = [],
@@ -101,16 +111,25 @@ export default function Reports() {
           "Status",
           "Time",
         ];
-        rows = dataArray.map((r) => [
-          r.id || "",
-          r.doctor || "",
-          r.specialty || "",
-          r.patient || "",
-          r.date ? formatDate(r.date) : "",
-          getWeekday(r.date),
-          r.status || "",
-          `${formatTime(r.starttime)} - ${formatTime(r.endtime)}`,
-        ]);
+        rows = dataArray.map((r) => {
+          const slotDate = r.date
+            ? parseDate(r.date)
+            : r.starttime
+            ? new Date(r.starttime)
+            : null;
+          return [
+            r.id || r._id?.$oid || "",
+            r.doctor || "",
+            r.specialty || "",
+            r.patient || "",
+            slotDate ? formatDate(slotDate) : "",
+            slotDate ? getWeekday(slotDate) : "",
+            r.status || "",
+            `${formatTime(r.starttime || r.startTime)} - ${formatTime(
+              r.endtime || r.endTime
+            )}`,
+          ];
+        });
         break;
 
       case "patients":
@@ -120,7 +139,7 @@ export default function Reports() {
           r.name || "",
           r.email || "",
           r.phone || "",
-          r.createdat ? formatDate(r.createdat) : "",
+          r.createdat || "",
         ]);
         break;
 
@@ -131,29 +150,39 @@ export default function Reports() {
           r.name || "",
           r.email || "",
           r.specialty || "",
-          r.createdat ? formatDate(r.createdat) : "",
+          r.createdat || "",
         ]);
         break;
 
       case "slots":
         headers = ["ID", "Doctor", "Specialty", "Date", "Day", "Time"];
-        rows = dataArray.map((r) => [
-          r.id || "",
-          r.doctor || "",
-          r.specialty || "",
-          r.date ? formatDate(r.date) : "",
-          getWeekday(r.date),
-          `${formatTime(r.starttime)} - ${formatTime(r.endtime)}`,
-        ]);
+        rows = dataArray.map((r) => {
+          const slotDate = r.startTime
+            ? new Date(r.startTime)
+            : r.starttime
+            ? new Date(r.starttime)
+            : null;
+          return [
+            r.id || r._id?.$oid || "",
+            r.doctor || "",
+            r.specialty || "",
+            slotDate ? formatDate(slotDate) : "",
+            slotDate ? getWeekday(slotDate) : "",
+            `${formatTime(r.startTime || r.starttime)} - ${formatTime(
+              r.endTime || r.endtime
+            )}`,
+          ];
+        });
         break;
 
       default:
         break;
     }
+
     return { headers, rows };
   }, [reportData, reportType]);
 
-  // CSV Export
+  // -------- CSV Export --------
   const exportCSV = () => {
     if (!tableData.rows.length) return;
     const csvContent =
@@ -169,7 +198,7 @@ export default function Reports() {
     link.remove();
   };
 
-  // PDF Export
+  // -------- PDF Export --------
   const exportPDF = () => {
     if (!tableData.rows.length) return;
     const doc = new jsPDF({
@@ -288,7 +317,7 @@ export default function Reports() {
           </div>
         )}
 
-        {(reportType === "doctors" || reportType === "patients") && (
+        {(reportType === "patients" || reportType === "doctors") && (
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Search
